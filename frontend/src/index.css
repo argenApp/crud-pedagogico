@@ -1,0 +1,17 @@
+/* index.css — Estilos globales con Tailwind */
+
+/* Estas tres directivas "inyectan" los estilos de Tailwind en el bundle CSS. */
+/* Sin ellas, las clases de Tailwind (bg-blue-600, flex, etc.) no funcionarían. */
+
+@tailwind base;
+/* "base" = estilos de reset y normalización de Tailwind. */
+/* Elimina los estilos por defecto del browser (márgenes, padding, etc.). */
+/* Establece una base consistente entre Chrome, Firefox, Safari. */
+
+@tailwind components;
+/* "components" = clases utilitarias de componentes de Tailwind. */
+/* Para este proyecto no usamos componentes de Tailwind plugin. */
+
+@tailwind utilities;
+/* "utilities" = las clases que usamos en className="flex gap-2 bg-blue-600 ...". */
+/* Es la parte principal de Tailwind — las ~10.000 clases utilitarias. */

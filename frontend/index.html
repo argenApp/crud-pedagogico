@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CRUD Pedagógico — Clean Architecture</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!--
+      "div#root" = el punto de montaje de React.
+      React inserta toda la UI dentro de este div.
+      Sin este div, React no tiene dónde renderizar.
+    -->
+    <script type="module" src="/src/main.tsx"></script>
+    <!--
+      type="module" = carga el script como módulo ES (con import/export).
+      src="/src/main.tsx" = Vite transforma el .tsx a JS en tiempo real durante desarrollo.
+    -->
+  </body>
+</html>

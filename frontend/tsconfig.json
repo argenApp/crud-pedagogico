@@ -1,0 +1,44 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    // "target": a qué versión de JavaScript compila TypeScript.
+    // ES2020 = JavaScript moderno con async/await, optional chaining, etc.
+    // El browser ejecuta ES2020 — TypeScript desaparece por completo.
+
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    // "lib": qué APIs conoce TypeScript.
+    // DOM = window, document, fetch, HTMLElement, etc.
+    // Sin "DOM", TypeScript no sabe que existe el browser.
+
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    "moduleResolution": "bundler",
+    // "bundler" = deja que Vite resuelva los módulos (imports).
+
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    // "noEmit": TypeScript NO genera archivos JS — eso lo hace Vite.
+    // TypeScript solo revisa tipos (su único trabajo en este setup).
+
+    "jsx": "react-jsx",
+    // "react-jsx": transforma <Button /> a React.createElement(Button, ...).
+    // Es la transformación automática — no necesitás importar React en cada archivo.
+
+    "strict": true,
+    // Modo estricto: activa todas las verificaciones de TypeScript.
+    // Más errores al programar = menos bugs en producción.
+
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+      // Le dice a TypeScript que "@/..." apunta a "./src/...".
+      // Sincronizado con el alias en vite.config.ts.
+    }
+  },
+  "include": ["src"]
+  // TypeScript solo analiza archivos dentro de "src/".
+}
