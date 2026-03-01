@@ -1,3 +1,9 @@
+# macOS metadata (AppleDouble files)
+._*
+.DS_Store
+.AppleDouble
+.LSOverride
+
 # Python
 __pycache__/
 *.py[cod]
@@ -17,7 +23,3 @@ venv/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
-
-# macOS
-.DS_Store
-frontend/._node_modules
