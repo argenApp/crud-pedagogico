@@ -22,8 +22,8 @@ import {
   // "type" antes del nombre = importación solo de TypeScript.
   // CrearTareaInput desaparece al compilar. Solo sirve para que TypeScript
   // verifique que el objeto que construimos tiene los campos correctos.
-} from '@/adapters/ui/hooks/useTareas'
-// El componente importa TODO desde el hook — nunca salta a application/ ni domain/.
+} from '@/adapters/ui/hooks/useTareasMutations'
+// El componente importa TODO desde el hook de mutaciones — nunca salta a application/ ni domain/.
 // El hook re-exporta los tipos para que el componente los use sin saltar capas.
 
 

@@ -17,8 +17,8 @@ import {
   useEliminarTarea,
   type TareaOutput,
   type ActualizarTareaInput,
-} from '@/adapters/ui/hooks/useTareas'
-// El componente importa TODO desde el hook — incluyendo los tipos re-exportados.
+} from '@/adapters/ui/hooks/useTareasMutations'
+// El componente importa TODO desde el hook de mutaciones — incluyendo los tipos re-exportados.
 // "type TareaOutput" → TypeScript. Desaparece al compilar.
 // "type ActualizarTareaInput" → TypeScript. Desaparece al compilar.
 

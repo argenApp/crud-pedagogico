@@ -40,7 +40,7 @@
 // ❌ NO puede importar: repositorios, Use Cases, fetch
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import { useListarTareas, type TareaOutput } from '@/adapters/ui/hooks/useTareas'
+import { useListarTareas, type TareaOutput } from '@/adapters/ui/hooks/useTareasQueries'
 // React Query hook — provee los datos del servidor.
 // "type TareaOutput" → TypeScript: importamos solo el tipo (desaparece al compilar).
 

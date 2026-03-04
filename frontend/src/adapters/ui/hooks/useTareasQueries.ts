@@ -1,41 +1,32 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// CAPA: INFRASTRUCTURE — State Hooks — Queries (React Query / Lectura)
+// CAPA: ADAPTERS — Hook de Lectura (React Query / useQuery)
 //
-// ★ Este archivo contiene SOLO hooks de LECTURA (useQuery).
-//
-// ─────────────────────────────────────────────────────────────────────────────
-// ¿POR QUÉ hooks de lectura en infrastructure/state/hooks/ y no en adapters/?
-//
-//   infrastructure/state/hooks/  = IMPLEMENTACIÓN
-//     → Aquí vive el queryFn real: instancia el repo, llama el UseCase, hace fetch.
-//     → Es "infraestructura de estado" del cliente — igual que un repositorio
-//       es "infraestructura de datos" del servidor.
-//
-//   adapters/ui/hooks/useTareas.ts = INTERFAZ PÚBLICA (Portero)
-//     → Solo re-exporta desde acá. No tiene lógica.
-//     → El componente importa del Portero, nunca llega aquí directamente.
-//
-//   La separación permite:
-//     → Cambiar React Query por SWR o Apollo → solo cambia este archivo.
-//     → El componente no se entera — sigue importando del Portero.
+// ★ El hook ES el Adapter: conecta el mundo React con la capa de Application.
+//   "Enchufado" = instancia el repo (Infrastructure) + el UseCase (Application)
+//   y los conecta con el sistema de cache de React Query.
 //
 // ─────────────────────────────────────────────────────────────────────────────
-// RECORRIDO DE CAPAS (lectura — omite UseCase + Domain):
+// ¿POR QUÉ en adapters/ y no en infrastructure/?
 //
-//   Presentation (componente)
-//       ↓
-//   Adapter (useTareas.ts — portero re-exporta este hook)
-//       ↓
-//   infrastructure/state/hooks/ (este archivo — queryFn real)
-//       ↓
-//   React Query verifica cache (HIT: ~5ms | MISS: ejecuta queryFn)
-//       ↓  (solo en MISS)
-//   infrastructure/repositories/TareaRepositoryImpl.ts
-//       ↓
-//   HTTP GET /api/v1/tareas/
+//   Infrastructure = repositorios, API clients, stores de Zustand — herramientas
+//   que hablan con el exterior (servidor, localStorage, RAM).
 //
-// ✅ Puede importar: repositorios, use cases, react-query
-// ❌ NO puede importar: componentes de presentación (.tsx), stores de Zustand
+//   Adapter = el "enchufe" que conecta mundos distintos:
+//     Mundo React (hooks, re-renders, componentes)
+//     Mundo Application (UseCases, execute(), Promises puras)
+//
+//   Este hook es ese enchufe: toma el UseCase (Application) y lo envuelve en
+//   React Query (React). Eso es responsabilidad del Adapter, no de Infrastructure.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// RECORRIDO DE CAPAS (lectura — omite UseCase+Domain para GET):
+//
+//   Presentation → Adapter (este hook) → Infrastructure (repo) → HTTP GET
+//   ↑ cache HIT (~5ms) si los datos existen y son frescos
+//   ↑ cache MISS → queryFn ejecuta → fetch → guarda en cache
+//
+// ✅ Puede importar: infrastructure (repos), application (use cases), domain (tipos)
+// ❌ NO puede importar: componentes .tsx, stores de Zustand
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { useQuery } from '@tanstack/react-query'
@@ -49,32 +40,31 @@ import type { TareaOutput } from '@/domain/outputDTO/TareaOutput'
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const TAREAS_QUERY_KEY = ['tareas'] as const
-// Se exporta desde QUERIES (no desde mutations) porque el query key
-// "pertenece" a la lectura — las mutaciones lo importan para invalidar.
-// Tener la clave en un solo lugar evita typos: si escribís ['tarea'] en
-// un lado y ['tareas'] en otro, la invalidación no funciona.
+// Exportada desde Queries porque la "dueña" de la clave es la lectura.
+// Las mutaciones la importan para saber qué invalidar al escribir.
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Hook de LECTURA: useListarTareas
+// Re-export de tipos — el componente importa todo desde este hook
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type { TareaOutput } from '@/domain/outputDTO/TareaOutput'
+// El componente hace: import { useListarTareas, type TareaOutput } from './useTareasQueries'
+// No necesita saber que TareaOutput viene de domain/ — lo obtiene del Adapter.
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hook de LECTURA
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function useListarTareas() {
   return useQuery<TareaOutput[], Error>({
     queryKey: TAREAS_QUERY_KEY,
-    // La clave identifica este query en el cache de React Query.
-    // Si el cache tiene datos frescos → HIT → devuelve sin fetch.
-    // Si el cache está vacío o los datos expiraron → MISS → ejecuta queryFn.
-
     queryFn: async () => {
-      // Se ejecuta solo en CACHE MISS.
-      // Instanciamos aquí (no en el componente) para mantener la lógica
-      // de infraestructura fuera de la Presentation.
-
+      // Cache MISS: instanciamos el repo y llamamos al UseCase.
       const repo    = new TareaRepositoryImpl()
       const useCase = new ListarTareas(repo)
       return useCase.execute()
-      // Devuelve Promise<TareaOutput[]> → React Query lo guarda en cache.
     },
   })
 }
