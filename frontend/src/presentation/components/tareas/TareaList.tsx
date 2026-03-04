@@ -12,8 +12,8 @@
 //   ┌─────────────────────────────────────────────────────────────────┐
 //   │                     TareaList (este componente)                 │
 //   │                                                                 │
-//   │  useListarTareas()          useFiltroTareas()                   │
-//   │  ↓ adapter → React Query    ↓ adapter → Zustand                │
+//   │  useListarTareas()          useFiltroTareasStore()              │
+//   │  ↓ React Query              ↓ Zustand                          │
 //   │  tareas: TareaOutput[]      filtro: 'todas'|'pendientes'|...   │
 //   │  (del backend, cacheado)    (en RAM, sin HTTP)                  │
 //   │                                                                 │
@@ -36,23 +36,25 @@
 //   ⚡ Sin fetch HTTP — los datos ya están en el cache de React Query
 //   ⚡ Sin useState — Zustand maneja el estado del tab
 //
-// ✅ Puede importar: hooks (Adapters) — UNA SOLA FUENTE
-// ❌ NO puede importar: repositorios, Use Cases, fetch, infrastructure directamente
+// ✅ Puede importar: adapters/ui/hooks/, adapters/ui/state/
+// ❌ NO puede importar: repositorios, Use Cases, fetch, infrastructure
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { useListarTareas, type TareaOutput } from '@/adapters/ui/hooks/useTareasQueries'
 // React Query hook — provee los datos del servidor.
 // "type TareaOutput" → TypeScript: importamos solo el tipo (desaparece al compilar).
 
-import { useFiltroTareas, type Filtro } from '@/adapters/ui/hooks/useFiltroTareas'
-// Zustand adapter hook — provee el estado de UI (tab activo).
-// El componente no sabe que hay un store de Zustand detrás.
-// Solo sabe que puede leer "filtro" y llamar "setFiltro".
+import { useFiltroTareasStore } from '@/adapters/ui/state/stores/useFiltroTareasStore'
+import {
+  selectFiltro,
+  selectSetFiltro,
+} from '@/adapters/ui/state/selectors/filtroTareasSelectors'
+import type { Filtro } from '@/adapters/ui/state/stores/useFiltroTareasStore'
+// Zustand store + selectores — viven en adapters/ui/state/ junto a los hooks.
+// El estado de UI no hace I/O → no es infrastructure. Es parte del adapter de UI.
 //
-// useFiltroTareas() encapsula:
-//   → useFiltroTareasStore(selectFiltro)    [Zustand — Infrastructure]
-//   → useFiltroTareasStore(selectSetFiltro) [selectores — Infrastructure]
-// El componente nunca importa de infrastructure/ directamente.
+// "useFiltroTareasStore(selectFiltro)" → selector:
+//   re-renderiza SOLO cuando "filtro" cambia, no si cambia otra parte del store.
 
 import { TareaItem } from './TareaItem'
 
@@ -82,15 +84,16 @@ export function TareaList() {
   // "data: tareas" → renombramos "data" a "tareas" para claridad en este archivo.
   // Tipo: TareaOutput[] | undefined  ("undefined" mientras carga la primera vez)
 
-  // ── 2. ZUSTAND: estado de UI (via adapter hook) ──────────────────────────────
-  const { filtro, setFiltro } = useFiltroTareas()
-  // "useFiltroTareas()" → Zustand adapter hook.
-  // Desestructuramos el objeto que devuelve: { filtro, setFiltro }.
-  // El componente no sabe que hay un store de Zustand detrás —
-  // solo ve dos valores: el filtro activo y la función para cambiarlo.
+  // ── 2. ZUSTAND: estado de UI ─────────────────────────────────────────────────
+  const filtro    = useFiltroTareasStore(selectFiltro)
+  const setFiltro = useFiltroTareasStore(selectSetFiltro)
+  // Usamos SELECTORES en lugar de desestructurar el store completo.
   //
-  // Internamente, useFiltroTareas() usa selectores para que este componente
-  // re-renderice SOLO cuando "filtro" cambia — no si cambia otra parte del store.
+  // selectFiltro    → devuelve state.filtro
+  // selectSetFiltro → devuelve state.setFiltro
+  //
+  // Zustand llama el selector con el estado actual y devuelve solo esa parte.
+  // Este componente re-renderiza SOLO si cambia filtro o setFiltro.
   //
   // ¿Cuándo re-renderiza?
   //   Con React Query: cuando los datos del servidor cambian (nuevo fetch).

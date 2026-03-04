@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// CAPA: INFRASTRUCTURE — State Selectors (Zustand)
+// CAPA: ADAPTERS — State Selectors (Zustand)
 //
 // ★ Este archivo contiene SELECTORES del store de filtro de tareas.
 //
@@ -24,7 +24,7 @@
 //      Si cambia otra parte del store → no re-renderiza. Más eficiente.
 //
 // ─────────────────────────────────────────────────────────────────────────────
-// ¿POR QUÉ están en infrastructure/state/selectors/ y no en el store?
+// ¿POR QUÉ están en adapters/ui/state/selectors/ y no en el store?
 //
 //   Store   → define QUÉ existe en el estado (estado + acciones)
 //   Selector → define CÓMO leer partes del estado de forma eficiente
@@ -38,7 +38,7 @@
 // PATRÓN DE USO EN EL COMPONENTE:
 //
 //   import { selectFiltro, selectSetFiltro } from '@/infrastructure/state/selectors/filtroTareasSelectors'
-//   import { useFiltroTareasStore } from '@/infrastructure/state/stores/useFiltroTareasStore'
+//   import { useFiltroTareasStore } from '@/adapters/ui/state/stores/useFiltroTareasStore'
 //
 //   const filtro    = useFiltroTareasStore(selectFiltro)
 //   const setFiltro = useFiltroTareasStore(selectSetFiltro)
@@ -47,7 +47,7 @@
 // ❌ NO puede importar: React, componentes, repositorios, React Query
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import type { Filtro } from '@/infrastructure/state/stores/useFiltroTareasStore'
+import type { Filtro } from '@/adapters/ui/state/stores/useFiltroTareasStore'
 // Importamos solo el TIPO — TypeScript puro, desaparece al compilar.
 // Necesitamos Filtro para tipar el parámetro de retorno del selector.
 

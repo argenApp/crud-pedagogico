@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// CAPA: INFRASTRUCTURE — State Store (Zustand)
+// CAPA: ADAPTERS — State Store (Zustand)
 //
 // ★ Este archivo es un STORE DE ZUSTAND — gestiona estado de UI en el cliente.
 //
