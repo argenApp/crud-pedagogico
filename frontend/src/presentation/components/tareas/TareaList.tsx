@@ -44,17 +44,21 @@ import { useListarTareas, type TareaOutput } from '@/adapters/ui/hooks/useTareas
 // React Query hook — provee los datos del servidor.
 // "type TareaOutput" → TypeScript: importamos solo el tipo (desaparece al compilar).
 
+import { useFiltroTareasStore } from '@/infrastructure/state/stores/useFiltroTareasStore'
 import {
-  useFiltroTareasStore,
-  type Filtro,
-} from '@/infrastructure/state/stores/useFiltroTareasStore'
-// Zustand store — provee el estado de UI (tab activo).
-// "type Filtro" → TypeScript: 'todas' | 'pendientes' | 'completadas'
+  selectFiltro,
+  selectSetFiltro,
+} from '@/infrastructure/state/selectors/filtroTareasSelectors'
+import type { Filtro } from '@/infrastructure/state/stores/useFiltroTareasStore'
+// Zustand store + selectores — proveen el estado de UI (tab activo).
 //
-// ¿Por qué importamos el store directamente y no desde el hook (useTareas.ts)?
-//   El store es estado de UI propio de este componente — no es un dato del servidor.
-//   El patrón "Hook Portero" aplica para datos del servidor (React Query).
-//   Para estado de UI (Zustand), los componentes importan el store directamente.
+// "useFiltroTareasStore(selectFiltro)" en lugar de "useFiltroTareasStore().filtro":
+//   → El componente re-renderiza SOLO cuando "filtro" cambia.
+//   → Sin selector: re-renderiza si CUALQUIER parte del store cambia.
+//   → Con selector: re-renderiza SOLO si lo que selecciona cambia. Más eficiente.
+//
+// Los selectores viven en infrastructure/state/selectors/ — separados del store.
+// Un solo lugar para buscar "cómo se lee X de un store".
 
 import { TareaItem } from './TareaItem'
 
@@ -85,16 +89,16 @@ export function TareaList() {
   // Tipo: TareaOutput[] | undefined  ("undefined" mientras carga la primera vez)
 
   // ── 2. ZUSTAND: estado de UI ─────────────────────────────────────────────────
-  const { filtro, setFiltro } = useFiltroTareasStore()
-  // "useFiltroTareasStore()" → Zustand.
-  // Devuelve el estado actual del store y las acciones para modificarlo.
+  const filtro    = useFiltroTareasStore(selectFiltro)
+  const setFiltro = useFiltroTareasStore(selectSetFiltro)
+  // Usamos SELECTORES en lugar de desestructurar el store completo.
   //
-  // "filtro"    → el tab actualmente activo ('todas' | 'pendientes' | 'completadas')
-  //               Empieza en 'todas' (valor inicial del store).
+  // selectFiltro    → devuelve state.filtro
+  // selectSetFiltro → devuelve state.setFiltro
   //
-  // "setFiltro" → función para cambiar el tab activo.
-  //               Cuando se llama, Zustand actualiza el estado y
-  //               React re-renderiza este componente automáticamente.
+  // Zustand llama el selector con el estado actual y devuelve solo esa parte.
+  // Este componente re-renderiza SOLO si cambia filtro o setFiltro — no si
+  // cambia otra parte del store (aunque hoy el store solo tiene esas dos).
   //
   // ¿Cuándo re-renderiza?
   //   Con React Query: cuando los datos del servidor cambian (nuevo fetch).
