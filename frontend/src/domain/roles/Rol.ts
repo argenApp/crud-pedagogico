@@ -1,6 +1,13 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // CAPA: DOMAIN — Roles y Reglas de Visibilidad
 //
+// Posición en la cadena de dependencias:
+//   Zustand (useRolStore) → Adapter (useTareasQueries) → UseCase (ListarTareas)
+//   → ReglaRol.filtrarPorRol() ← ESTE ARCHIVO define esa regla
+//
+// Define las reglas de QUIÉN puede ver QUÉ.
+// El UseCase (ListarTareas) lo consulta antes de devolver datos.
+//
 // ¿Por qué los GET pasan por el UseCase?
 // ─────────────────────────────────────────────────────────────────────────────
 //   Porque el UseCase aplica REGLAS DE NEGOCIO sobre QUÉ puede ver cada rol.
@@ -13,8 +20,14 @@
 //   1. Rol        → qué roles existen en el sistema
 //   2. ReglaRol   → la REGLA DE NEGOCIO que determina qué ve cada rol
 //
-// ✅ Puede importar: NADA externo. Es TypeScript puro.
-// ❌ NO puede importar: React, fetch, TanStack, nada de Infrastructure.
+// Regla de dependencias (Clean Architecture — Ley de Dependencia):
+//   ✅ Puede importar: NADA externo. Es TypeScript puro.
+//   ❌ NO puede importar: React, fetch, TanStack, nada de Infrastructure.
+//
+// 🔍 DevTools — cómo observar este archivo en acción:
+//   Console: agrega console.log('[DOMAIN] ReglaRol.filtrarPorRol:', rol, 'total:', tareas.length)
+//   dentro de filtrarPorRol para ver el filtrado en acción.
+//   ADMIN recibirá N items. VIEWER recibirá solo los completados.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 
@@ -71,6 +84,10 @@ export class ReglaRol {
     //   En ListarTareas.execute() — el UseCase de Application.
     //   NUNCA en el repositorio (el repo no sabe de roles).
     //   NUNCA en el componente (el componente no decide qué datos son válidos).
+
+    // 🔍 Console: pon console.log('[DOMAIN] ReglaRol.filtrarPorRol:', rol, tareas.length)
+    // aquí → verás que ADMIN recibe N items, VIEWER recibe solo los completados.
+    // Si hay 5 tareas y 2 completadas: ADMIN ve 5, VIEWER ve 2.
 
     if (rol === 'ADMIN') {
       return tareas

@@ -1,6 +1,24 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // CAPA: APPLICATION — DTOs de Entrada (Input DTOs)
 //
+// Posición en la cadena de dependencias:
+//   Presentation (componente) → Adapter (hook mutationFn) → UseCase.execute(input)
+//   Los Input DTOs son los "sobres de entrada" que viajan en esa dirección.
+//
+// Define lo que el USUARIO puede enviar. Lo que NO está acá no puede enviarse al servidor.
+//
+// Regla de dependencias (Clean Architecture — Ley de Dependencia):
+//   ✅ Puede importar: nada (son interfaces puras de TypeScript)
+//   ❌ NO puede importar: React, fetch, domain entities (los DTOs son independientes)
+//
+// 🔍 DevTools — cómo observar este archivo en acción:
+//   Network > Fetch/XHR > POST /api/v1/tareas/ > Payload tab
+//   → verás exactamente los campos de este DTO (solo "titulo") en el body del request.
+//   Network > Fetch/XHR > PUT /api/v1/tareas/{id} > Payload tab
+//   → verás "titulo" y "completada" del ActualizarTareaInput.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Nombre del archivo: TareaInputDTO.ts
 // Convención: todos los INPUT DTOs de una entidad viven en UN solo archivo.
 // "Find All References" en CrearTareaInput muestra la cadena completa.
@@ -16,10 +34,7 @@
 //             Lo que el USUARIO envía hacia adentro (sin id, sin creadaEn).
 //   OUTPUT → domain/outputDTO/TareaOutputDTO.ts
 //             Lo que el SISTEMA devuelve hacia afuera (con id, con creadaEn).
-//
-// ✅ Puede importar: nada (son interfaces puras de TypeScript)
-// ❌ NO puede importar: React, fetch, domain entities (los DTOs son independientes)
-// ═══════════════════════════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INPUT DTO para CREAR una tarea

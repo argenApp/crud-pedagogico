@@ -1,8 +1,13 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // CAPA: PRESENTATION — Componente: RolSwitcher
 //
-// Simula el cambio de usuario/rol para demostrar las reglas de negocio
-// del UseCase en operaciones de LECTURA (GET).
+// Posición en la cadena de dependencias:
+//   TareasPage → RolSwitcher → useRolStore(selectSetRol) → setRol(nuevoRol)
+//            → Zustand actualiza → useTareasQueries detecta queryKey nueva
+//            → React Query re-fetch → UseCase.execute(nuevoRol) → ReglaRol.filtrarPorRol()
+//            → TareaList recibe datos filtrados por el nuevo rol
+//
+// Simula el cambio de rol para demostrar reglas de negocio en lecturas GET.
 //
 // ─────────────────────────────────────────────────────────────────────────────
 // PROPÓSITO PEDAGÓGICO:
@@ -19,8 +24,16 @@
 //
 //   Demostración en vivo de por qué los GET pasan por el UseCase.
 //
-// ✅ Puede importar: adapters/ui/state/ (stores + selectors)
-// ❌ NO puede importar: repositorios, Use Cases, fetch, infrastructure
+// Regla de dependencias (Clean Architecture — Ley de Dependencia):
+//   ✅ Puede importar: adapters/ui/state/ (stores + selectors), domain (solo tipos)
+//   ❌ NO puede importar: repositorios, Use Cases, fetch, infrastructure
+//
+// 🔍 DevTools — cómo observar este archivo en acción:
+//   Al hacer click en un botón de rol:
+//   1) React DevTools → useRolStore.State cambia ('ADMIN' ↔ 'VIEWER')
+//   2) React Query DevTools → nueva query con key ['tareas', nuevoRol] aparece en 'fetching'
+//   3) Network → nuevo GET /api/v1/tareas/ se dispara automáticamente
+//   4) TareaList → se actualiza con los datos filtrados por el nuevo rol
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { useRolStore }  from '@/adapters/ui/state/stores/useRolStore'
@@ -94,7 +107,9 @@ export function RolSwitcher() {
             <button
               key={config.valor}
               onClick={() => setRol(config.valor)}
-              // onClick → setRol → Zustand → queryKey cambia → React Query re-fetch
+              // 🔍 React Query DevTools: después de este click → observá cómo aparece
+              // una nueva query con key ['tareas', nuevoRol] en estado 'fetching'.
+              // → onClick → setRol → Zustand → queryKey cambia → React Query re-fetch
               // → UseCase.execute(nuevoRol) → ReglaRol.filtrarPorRol() → UI actualizada
 
               className={[

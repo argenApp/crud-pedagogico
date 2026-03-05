@@ -1,6 +1,26 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // CAPA: DOMAIN — OUTPUT DTO
 //
+// Posición en la cadena de dependencias:
+//   Infrastructure (repo._toOutputDTO) → produce este objeto
+//   Application (UseCases)             → lo devuelve
+//   Adapters (hooks React Query)       → lo cachea
+//   Presentation (componentes)         → lo consume y renderiza
+//
+// Es el "sobre de respuesta" que viaja desde Infrastructure hasta Presentation.
+// Ninguna capa lo modifica en el camino — solo lo pasa hacia arriba.
+//
+// Regla de dependencias (Clean Architecture — Ley de Dependencia):
+//   ✅ Puede importar: NADA. Es un objeto de datos puro.
+//   ❌ NO puede importar: React, fetch, ni nada externo.
+//
+// 🔍 DevTools — cómo observar este archivo en acción:
+//   React DevTools > Components > TareaList > hooks[0].data
+//   → verás el array de TareaOutputDTO en vivo con todos sus campos.
+//   Cada objeto tendrá: { id, titulo, completada, creadaEn } en camelCase.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ★ Este es el OUTPUT DTO — lo que el sistema devuelve después de ejecutar
 //   un UseCase. Es el "sobre de respuesta" que viaja desde Infrastructure
 //   hasta el componente de Presentation.
@@ -43,10 +63,7 @@
 //   → application/useCases/Tareas/*.ts  (los UseCases lo devuelven)
 //   → adapters/ui/hooks/useTareasQueries.ts (React Query lo cachea)
 //   → presentation/components/*.tsx  (los componentes lo usan en onSuccess)
-//
-// ✅ Puede importar: NADA. Es un objeto de datos puro.
-// ❌ NO puede importar: React, fetch, ni nada externo.
-// ═══════════════════════════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface TareaOutputDTO {
   // "interface" = TypeScript. SOLO existe al programar. Desaparece al compilar.

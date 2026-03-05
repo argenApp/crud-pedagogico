@@ -1,12 +1,12 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // CAPA: INFRASTRUCTURE — Implementación del Repositorio
 //
-// Este archivo hace el trabajo "real" del frontend: habla con la API del backend.
+// Posición en la cadena de dependencias:
+//   UseCase → ITareaRepository (contrato) → TareaRepositoryImpl (ESTE ARCHIVO) → apiClient → fetch
 //
-// Responsabilidades ÚNICAS de esta capa:
-//   1. Llamar al backend vía HTTP (usando apiClient)
-//   2. Convertir snake_case (backend) → camelCase (frontend) en _toOutputDTO()
-//   3. Enviar los datos en el formato que espera el backend
+// EL ÚNICO LUGAR CON snake_case EN TODO EL FRONTEND.
+// Implementa ITareaRepository. _toOutputDTO() es el único punto de conversión
+// snake_case (backend) → camelCase (frontend).
 //
 // ┌──────────────────────────────────────────────────────────────────────────┐
 // │  EL ÚNICO LUGAR CON snake_case EN TODO EL FRONTEND                      │
@@ -17,8 +17,20 @@
 // │  La conversión ocurre SOLO en _toOutputDTO(). En ningún otro archivo.   │
 // └──────────────────────────────────────────────────────────────────────────┘
 //
-// ✅ Puede importar: domain/outputDTO, domain/entities, application/inputDTO, application/ports, apiClient
-// ❌ NO puede importar: React, hooks, componentes de presentación
+// Responsabilidades ÚNICAS de esta capa:
+//   1. Llamar al backend vía HTTP (usando apiClient)
+//   2. Convertir snake_case (backend) → camelCase (frontend) en _toOutputDTO()
+//   3. Enviar los datos en el formato que espera el backend
+//
+// Regla de dependencias (Clean Architecture — Ley de Dependencia):
+//   ✅ Puede importar: domain/outputDTO, domain/entities, application/inputDTO, application/ports, apiClient
+//   ❌ NO puede importar: React, hooks, componentes de presentación
+//
+// 🔍 DevTools — cómo observar este archivo en acción:
+//   Network > Fetch/XHR: cada método genera 1 request (GET, POST, PUT, DELETE).
+//   Console: agrega console.log('[REPO] raw:', raw) ANTES de llamar a _toOutputDTO()
+//   para ver la respuesta RAW del backend con snake_case (creada_en, etc.).
+//   Comparalo con el TareaOutputDTO resultante → la conversión es visible.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import type { TareaOutputDTO } from '@/domain/outputDTO/TareaOutputDTO'
@@ -68,6 +80,9 @@ function _toOutputDTO(raw: TareaApiResponse): TareaOutputDTO {
   //   → TareaEntity = la clase con lógica (validarCreacion). Solo vive en Domain.
   //   → El repositorio produce Output DTOs, no Entities con comportamiento.
 
+  // 🔍 Console: console.log('[REPO] raw.creada_en:', raw.creada_en, '→ creadaEn:', raw.creada_en)
+  // Este es el ÚNICO punto donde snake_case se convierte a camelCase en todo el frontend.
+
   return {
     id:         raw.id,
     titulo:     raw.titulo,
@@ -97,6 +112,7 @@ export class TareaRepositoryImpl implements ITareaRepository {
   // Es el compilador actuando como "inspector de calidad".
 
   async crear(input: CrearTareaInput): Promise<TareaOutputDTO> {
+    // 🔍 Network: POST /api/v1/tareas/ → Payload: { titulo } | Response: { id, titulo, completada, creada_en }
     const raw = await apiClient.post<TareaApiResponse>('/api/v1/tareas/', {
       // "<TareaApiResponse>" = generic que le dice al apiClient qué tipo de respuesta esperar.
       // TypeScript verifica que el resultado sea TareaApiResponse antes de usarlo.
@@ -110,6 +126,8 @@ export class TareaRepositoryImpl implements ITareaRepository {
   }
 
   async listar(): Promise<TareaOutputDTO[]> {
+    // 🔍 Network: GET /api/v1/tareas/ → Response: array JSON con snake_case.
+    // Después de .map(_toOutputDTO) → camelCase en el frontend.
     const raws = await apiClient.get<TareaApiResponse[]>('/api/v1/tareas/')
     // "TareaApiResponse[]" → esperamos un array de responses raw.
 
@@ -117,12 +135,13 @@ export class TareaRepositoryImpl implements ITareaRepository {
     // ".map(_toOutputDTO)" = aplica _toOutputDTO a cada elemento del array.
     // Equivalente a: raws.map((raw) => _toOutputDTO(raw))
     // Resultado: TareaOutputDTO[] (array de Output DTOs).
+    // Iron Law 3: el repositorio devuelve OutputDTOs (nunca raw API response).
   }
 
   async obtenerPorId(id: string): Promise<TareaOutputDTO | null> {
     try {
       const raw = await apiClient.get<TareaApiResponse>(`/api/v1/tareas/${id}`)
-      // Template literal: `/api/tareas/${id}` → `/api/tareas/f47ac10b-...`
+      // Template literal: `/api/v1/tareas/${id}` → `/api/v1/tareas/f47ac10b-...`
       return _toOutputDTO(raw)
     } catch {
       // Si el backend devuelve 404, apiClient lanza un Error.
@@ -132,6 +151,7 @@ export class TareaRepositoryImpl implements ITareaRepository {
   }
 
   async actualizar(id: string, input: ActualizarTareaInput): Promise<TareaOutputDTO> {
+    // 🔍 Network: PUT /api/v1/tareas/{id} → Payload: { titulo, completada }
     const raw = await apiClient.put<TareaApiResponse>(`/api/v1/tareas/${id}`, {
       titulo:     input.titulo,
       completada: input.completada,
@@ -143,6 +163,7 @@ export class TareaRepositoryImpl implements ITareaRepository {
   }
 
   async eliminar(id: string): Promise<void> {
+    // 🔍 Network: DELETE /api/v1/tareas/{id} → status 204, sin body.
     await apiClient.delete(`/api/v1/tareas/${id}`)
     // No hay respuesta que procesar (HTTP 204 No Content).
     // Si la tarea no existe, apiClient lanza un Error → el UseCase lo propaga.

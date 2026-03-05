@@ -1,13 +1,25 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // CAPA: APPLICATION — Use Case: CrearTarea
 //
+// Posición en la cadena de dependencias:
+//   Adapter (mutationFn) → CrearTarea.execute() → TareaEntity.validarCreacion()
+//                       → repo.crear() → HTTP POST
+//
+// Orquesta: 1) valida en Domain, 2) persiste via repo. NO hace HTTP directamente.
+//
 // Analogía: el "director de orquesta". No toca ningún instrumento —
 // solo sabe a quién llamar y en qué orden.
 //   1. Llama al Domain (árbitro) para validar.
 //   2. Delega la persistencia al Repositorio (vía el Puerto).
 //
-// ✅ Puede importar: domain/entities, application/inputDTO, application/ports
-// ❌ NO puede importar: fetch, React, TareaRepositoryImpl, nada de Infrastructure
+// Regla de dependencias (Clean Architecture — Ley de Dependencia):
+//   ✅ Puede importar: domain/entities, application/inputDTO, application/ports
+//   ❌ NO puede importar: fetch, React, TareaRepositoryImpl, nada de Infrastructure
+//
+// 🔍 DevTools — cómo observar este archivo en acción:
+//   Console: pon un log ANTES de validarCreacion y DESPUÉS para ver el flujo.
+//   Si la validación falla → no hay request en Network.
+//   Si pasa la validación → SÍ aparece POST en Network > Fetch/XHR.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import type { TareaOutputDTO } from '@/domain/outputDTO/TareaOutputDTO'
@@ -50,12 +62,16 @@ export class CrearTarea {
     //   "<TareaOutputDTO>" es un generic — TypeScript puro, desaparece al compilar.
 
     // ── Paso 1: Validar en el Domain ─────────────────────────────────────────
+    // 🔍 Console: console.log('[USE_CASE] CrearTarea.execute — validando en Domain')
+    // Si ves este log pero NO hay POST en Network → la validación falló en el Domain.
     TareaEntity.validarCreacion(input.titulo)
     // "input.titulo" accede a la propiedad "titulo" del objeto input.
-    // Si el título es inválido, TareaEntity lanza un Error y ejecutar() se detiene aquí.
+    // Si el título es inválido, TareaEntity lanza un Error y execute() se detiene aquí.
     // El hook (Adapter) recibirá ese Error en el callback "onError".
 
     // ── Paso 2: Delegar al Repositorio ───────────────────────────────────────
+    // 🔍 Console: console.log('[USE_CASE] CrearTarea — Domain OK, delegando a repo')
+    // Si ves este log → SÍ habrá POST en Network > Fetch/XHR.
     return await this.repo.crear(input)
     // "await" espera que la Promise se resuelva antes de continuar.
     // Sin "await": this.repo.crear(input) devolvería una Promise sin resolver.

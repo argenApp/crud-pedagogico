@@ -1,7 +1,12 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// CAPA: ADAPTERS — State Store (Zustand)
+// CAPA: ADAPTERS — State Store (Zustand): Filtro de Tareas
 //
-// ★ Este archivo es un STORE DE ZUSTAND — gestiona estado de UI en el cliente.
+// Posición en la cadena de dependencias:
+//   Presentation (TareaList) → useFiltroTareasStore(selectFiltro) → [filtro activo]
+//   → .filter() sobre datos de React Query → UI actualizada SIN HTTP
+//
+// ★ Este archivo es un STORE DE ZUSTAND — gestiona ESTADO DE UI en el cliente.
+//   NO hace HTTP. NO habla con el backend. Es JavaScript puro en RAM.
 //
 // ─────────────────────────────────────────────────────────────────────────────
 // ¿QUÉ ES ZUSTAND?
@@ -17,12 +22,12 @@
 //     (prop drilling: cadena de props tediosa y frágil)
 //
 //   Con Zustand:
-//     Nieto lee directamente del store: useFiltroTareasStore().filtro
+//     Nieto lee directamente del store: useFiltroTareasStore(selectFiltro)
 //     Botón en Hermano2 llama: setFiltro('pendientes')
 //     Nieto se re-renderiza automáticamente — sin comunicación entre Padre y Hermanos.
 //
 // ─────────────────────────────────────────────────────────────────────────────
-// ZUSTAND vs REACT QUERY — ¿cuándo usar cada uno?
+// ZUSTAND vs REACT QUERY — State Rule: cuándo usar cada uno
 //
 //   ZUSTAND (este archivo):
 //     → Estado de UI: ¿qué tab está activo? ¿está el modal abierto?
@@ -31,26 +36,34 @@
 //     → Se pierde al recargar la página (volátil)
 //     → Ejemplo: filtro activo ('todas' | 'pendientes' | 'completadas')
 //
-//   REACT QUERY (useTareas.ts):
+//   REACT QUERY (useTareasQueries.ts):
 //     → Datos del servidor: lista de tareas, usuarios, productos
 //     → Hace HTTP — habla con el backend
 //     → Tiene cache con lógica HIT/MISS
 //     → También se pierde al recargar (sin configurar persist)
-//     → Ejemplo: el array TareaOutput[] que viene del GET /api/v1/tareas/
+//     → Ejemplo: el array TareaOutputDTO[] que viene del GET /api/v1/tareas/
 //
 // REGLA: Nunca guardes datos del servidor en Zustand. Nunca guardes estado de UI
 //        en React Query. Cada herramienta tiene su dominio.
 //
 // ─────────────────────────────────────────────────────────────────────────────
-// ¿POR QUÉ vive en infrastructure/state/stores/?
+// ¿POR QUÉ vive en adapters/ui/state/stores/ y no en infrastructure/?
 //
-//   Zustand es una herramienta de infraestructura del cliente:
-//   es el "motor de estado" concreto, igual que axios es el "motor HTTP".
-//   Si mañana reemplazás Zustand por Jotai o Redux, solo cambia esta carpeta.
+//   El filtro es estado de UI — una decisión del cliente (JS puro, sin I/O).
+//   No es infrastructure porque infrastructure = herramientas de acceso a datos
+//   (HTTP, localStorage, indexedDB). El filtro no accede a nada externo.
+//   Si mañana reemplazás Zustand por Jotai, solo cambia esta carpeta.
 //   Los componentes siguen importando del mismo lugar.
 //
-// ✅ Puede importar: zustand (librería)
-// ❌ NO puede importar: React Query, repositorios, Use Cases
+// Regla de dependencias (Clean Architecture — Ley de Dependencia):
+//   ✅ Puede importar: zustand (librería)
+//   ❌ NO puede importar: React Query, repositorios, Use Cases
+//
+// 🔍 DevTools — cómo observar este archivo en acción:
+//   React DevTools > Components > TareaList > hooks:
+//   Buscá el hook de Zustand → State: 'todas'|'pendientes'|'completadas'
+//   Cambia en tiempo real al hacer click en los tabs del filtro.
+//   NO hay request en Network — el filtro es solo JavaScript .filter().
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { create } from 'zustand'
@@ -123,6 +136,9 @@ export const useFiltroTareasStore = create<FiltroTareasStore>()(
     // "(filtro: Filtro)" → TypeScript: el parámetro debe ser uno de los tres valores.
     // "set({ filtro })" → shorthand de JS: equivalente a set({ filtro: filtro }).
     //
+    // 🔍 React DevTools: después de onClick en un tab → el State del store cambia.
+    // NO hay request en Network (es solo JavaScript .filter() sobre datos en cache).
+    //
     // Flujo cuando el usuario hace click en "Pendientes":
     //   1. onClick del botón llama setFiltro('pendientes')
     //   2. Zustand ejecuta set({ filtro: 'pendientes' })
@@ -135,19 +151,13 @@ export const useFiltroTareasStore = create<FiltroTareasStore>()(
 // ─────────────────────────────────────────────────────────────────────────────
 // ¿Cómo se usa este store en un componente?
 //
-//   import { useFiltroTareasStore } from '@/infrastructure/state/stores/useFiltroTareasStore'
+//   import { useFiltroTareasStore } from '@/adapters/ui/state/stores/useFiltroTareasStore'
+//   import { selectFiltro } from '@/adapters/ui/state/selectors/filtroTareasSelectors'
 //
 //   function MiComponente() {
-//     const { filtro, setFiltro } = useFiltroTareasStore()
-//     //     ↑ lee el estado actual  ↑ función para cambiarlo
+//     const filtro = useFiltroTareasStore(selectFiltro)
+//     //                                  ↑ selector: re-renderiza SOLO si filtro cambia
 //
 //     return <button onClick={() => setFiltro('pendientes')}>Pendientes</button>
 //   }
-//
-// ¿Qué pasa si solo necesito el filtro pero no setFiltro?
-//   Puedes usar un selector para evitar re-renders innecesarios:
-//
-//   const filtro = useFiltroTareasStore((state) => state.filtro)
-//   // Solo re-renderiza si "filtro" cambia — no si cambia otra parte del store.
-//   // Para un store tan pequeño como este, ambas formas son equivalentes.
 // ─────────────────────────────────────────────────────────────────────────────

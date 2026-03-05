@@ -1,11 +1,24 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // CAPA: INFRASTRUCTURE — Cliente HTTP
 //
-// Este archivo centraliza la URL base del backend y la lógica de fetch.
+// Posición en la cadena de dependencias:
+//   TareaRepositoryImpl → apiClient (este archivo) → fetch nativo del browser → Backend
+//
+// Punto de contacto real con el servidor. TODOS los requests HTTP pasan por aquí.
 // Si la URL del backend cambia, solo cambiás este archivo.
 //
-// ✅ Puede importar: nada externo (solo fetch nativo del browser)
-// ❌ NO puede importar: React, domain entities, application use cases
+// Regla de dependencias (Clean Architecture — Ley de Dependencia):
+//   ✅ Puede importar: nada externo (solo fetch nativo del browser)
+//   ❌ NO puede importar: React, domain entities, application use cases
+//
+// 🔍 DevTools — cómo observar este archivo en acción:
+//   Network > Fetch/XHR: cada llamada a apiClient genera 1 request HTTP.
+//   Hacé click en el request para ver:
+//     - Headers tab: método, URL, Content-Type
+//     - Payload tab: el JSON que se envía (POST/PUT)
+//     - Response tab: el JSON que devuelve el backend
+//     - Timing tab: cuánto tardó la request
+//   Los errores HTTP (4xx/5xx) aparecen en rojo en Network.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const BASE_URL = 'http://localhost:8000'
@@ -38,6 +51,8 @@ async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     // "response.ok" = true si el HTTP status es 200-299.
     // Si es 400, 404, 422, 500, etc. → response.ok es false.
+    // 🔍 Network: el status aparece en rojo (4xx/5xx).
+    // Console: verás el Error propagarse hasta onError del hook.
     const errorData: ApiErrorResponse = await response.json()
     // "await response.json()" = lee el body de la respuesta como JSON.
     // Necesitamos "await" porque leer el body es asíncrono.
@@ -51,7 +66,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
   if (response.status === 204) {
     // HTTP 204 = No Content (el servidor no devuelve body).
-    // Ej: respuesta del DELETE exitoso.
+    // 🔍 Network: DELETE exitoso → status 204, columna 'Size' = 0 B (sin body).
     return undefined as unknown as T
     // Hack de TypeScript: "as unknown as T" fuerza el tipo.
     // "undefined" es correcto para Promise<void> — pero TypeScript necesita el cast.
@@ -71,7 +86,8 @@ export const apiClient = {
   // El repositorio lo importará: import { apiClient } from '@/infrastructure/api/apiClient'
 
   async get<T>(path: string): Promise<T> {
-    // "path: string" → la ruta del endpoint. Ej: '/api/tareas/'
+    // "path: string" → la ruta del endpoint. Ej: '/api/v1/tareas/'
+    // 🔍 Network: GET → verás el request con método GET y el JSON en la tab 'Response'.
     const response = await fetch(`${BASE_URL}${path}`, {
       // "fetch" = función nativa del browser para hacer HTTP requests.
       // Es JavaScript puro — no es una librería externa.
@@ -86,6 +102,8 @@ export const apiClient = {
   async post<T>(path: string, body: unknown): Promise<T> {
     // "body: unknown" → el tipo del cuerpo del request.
     // "unknown" es el tipo más seguro — TypeScript obliga a verificarlo antes de usarlo.
+    // 🔍 Network: POST → tab 'Payload' muestra el body enviado (ej: { "titulo": "..." });
+    //             tab 'Response' muestra la TareaApiResponse creada con id y creada_en.
     const response = await fetch(`${BASE_URL}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -98,6 +116,8 @@ export const apiClient = {
   },
 
   async put<T>(path: string, body: unknown): Promise<T> {
+    // 🔍 Network: PUT → tab 'Payload' muestra { titulo, completada };
+    //             tab 'Response' muestra la tarea actualizada.
     const response = await fetch(`${BASE_URL}${path}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -108,6 +128,7 @@ export const apiClient = {
 
   async delete(path: string): Promise<void> {
     // "Promise<void>" → no devuelve ningún valor (DELETE exitoso = HTTP 204).
+    // 🔍 Network: DELETE → status 204 No Content, sin body en Response tab.
     const response = await fetch(`${BASE_URL}${path}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },

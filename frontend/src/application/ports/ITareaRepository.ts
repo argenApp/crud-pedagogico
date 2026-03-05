@@ -1,6 +1,12 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // CAPA: APPLICATION — Puerto (Port / Interface del Repositorio)
 //
+// Posición en la cadena de dependencias:
+//   UseCase → ITareaRepository (este contrato) → TareaRepositoryImpl (implementación concreta)
+//
+// El CONTRATO del repositorio. Application decide QUÉ necesita.
+// Infrastructure decide CÓMO hacerlo.
+//
 // Analogía: el "contrato laboral". El UseCase dice:
 //   "necesito a alguien que sepa crear, listar, actualizar y eliminar tareas".
 // Este archivo define ESE CONTRATO. No sabe CÓMO se implementa.
@@ -10,8 +16,14 @@
 //   Infrastructure decide CÓMO hacerlo (TareaRepositoryImpl).
 //   El UseCase depende de la ABSTRACCIÓN — nunca de la implementación concreta.
 //
-// ✅ Puede importar: domain/outputDTO, domain/entities, application/inputDTO (Input DTOs)
-// ❌ NO puede importar: fetch, localStorage, ningún detalle de implementación
+// Regla de dependencias (Clean Architecture — Ley de Dependencia):
+//   ✅ Puede importar: domain/outputDTO, domain/entities, application/inputDTO (Input DTOs)
+//   ❌ NO puede importar: fetch, localStorage, ningún detalle de implementación
+//
+// 🔍 DevTools — cómo observar este archivo en acción:
+//   No se ejecuta en runtime — es TypeScript puro. No genera código JavaScript.
+//   Se ve en Infrastructure cuando TareaRepositoryImpl implementa esta interface.
+//   TypeScript verifica en compilación que todos los métodos estén implementados.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import type { TareaOutputDTO } from '@/domain/outputDTO/TareaOutputDTO'
@@ -37,6 +49,9 @@ export interface ITareaRepository {
   listar(): Promise<TareaOutputDTO[]>
   // "TareaOutputDTO[]" = array de Output DTOs. Equivalente a "Array<TareaOutputDTO>".
   // Cuando no hay tareas, devuelve [] (array vacío), no null.
+  //
+  // Iron Law 3 aplicado aquí: el repositorio devuelve OutputDTOs, NUNCA raw API response.
+  // El llamador (UseCase) recibe datos ya convertidos a camelCase.
 
   obtenerPorId(id: string): Promise<TareaOutputDTO | null>
   // "TareaOutputDTO | null" = puede devolver un Output DTO O null.

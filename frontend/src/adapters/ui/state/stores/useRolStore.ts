@@ -1,12 +1,18 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // CAPA: ADAPTERS — Store de UI: Rol del usuario simulado
 //
+// Posición en la cadena de dependencias:
+//   Presentation (RolSwitcher) → setRol() → Zustand → useRolStore(selectRol)
+//   → Adapter (useTareasQueries) → queryKey cambia → React Query re-fetch
+//   → UseCase.execute(rol) → ReglaRol.filtrarPorRol() → datos filtrados
+//
 // ¿Por qué el rol vive en Zustand y no en React Query?
 // ─────────────────────────────────────────────────────────────────────────────
 //   Porque el rol es ESTADO DE UI (una decisión del cliente), no datos del servidor.
 //   En producción real, el rol vendría del token JWT verificado por el backend.
 //   Acá lo simulamos con Zustand para poder demostrarlo sin un sistema de auth real.
 //
+//   State Rule: datos del servidor → React Query; decisiones de UI → Zustand
 //   Regla: servidor da el rol → Zustand lo guarda → UseCase lo consume para filtrar.
 //
 // ┌──────────────────────────────────────────────────────────────────┐
@@ -15,8 +21,15 @@
 // │                                   →  datos filtrados al Adapter  │
 // └──────────────────────────────────────────────────────────────────┘
 //
-// ✅ Puede importar: zustand, domain/roles/Rol
-// ❌ NO puede importar: React, fetch, componentes de presentación
+// Regla de dependencias (Clean Architecture — Ley de Dependencia):
+//   ✅ Puede importar: zustand, domain/roles/Rol
+//   ❌ NO puede importar: React, fetch, componentes de presentación
+//
+// 🔍 DevTools — cómo observar este archivo en acción:
+//   React DevTools > Components > useListarTareas → hooks[0] (useRolStore)
+//   → State: 'ADMIN'|'VIEWER' cambia en tiempo real al hacer click en RolSwitcher.
+//   React Query DevTools: al cambiar el rol → nueva query con key ['tareas', nuevoRol]
+//   aparece en el panel izquierdo en estado 'fetching'.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { create } from 'zustand'
@@ -57,4 +70,7 @@ export const useRolStore = create<RolStore>()((set) => ({
   // Zustand fusiona el objeto parcial con el estado existente.
   // Equivalente completo: set((state) => ({ ...state, rol }))
   // Zustand lo hace automáticamente — no necesitás el spread manual.
+  //
+  // 🔍 React Query DevTools: cambiar rol → queryKey nueva ['tareas', nuevoRol]
+  // → nueva entrada en el panel → re-fetch automático → UseCase filtra por el nuevo rol.
 }))

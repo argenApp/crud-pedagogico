@@ -1,5 +1,21 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // CAPA: APPLICATION — Use Case: ActualizarTarea
+//
+// Posición en la cadena de dependencias:
+//   Adapter (mutationFn) → ActualizarTarea.execute(id, input)
+//                       → TareaEntity.validarCreacion() → repo.actualizar() → HTTP PUT
+//
+// Orquesta: 1) valida el nuevo título en Domain, 2) persiste via repo.
+// NO hace HTTP directamente — delega al repositorio.
+//
+// Regla de dependencias (Clean Architecture — Ley de Dependencia):
+//   ✅ Puede importar: domain/entities, application/inputDTO, application/ports
+//   ❌ NO puede importar: fetch, React, TareaRepositoryImpl, nada de Infrastructure
+//
+// 🔍 DevTools — cómo observar este archivo en acción:
+//   Network > Fetch/XHR: PUT /api/v1/tareas/{id} con el body { titulo, completada }
+//   Console: pon logs antes/después de validarCreacion para ver el flujo Domain → repo.
+//   Si la validación falla → no hay PUT en Network. Si pasa → SÍ hay PUT.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import type { TareaOutputDTO } from '@/domain/outputDTO/TareaOutputDTO'
@@ -24,11 +40,15 @@ export class ActualizarTarea {
     // "input: ActualizarTareaInput" → los campos nuevos (titulo, completada).
 
     // ── Paso 1: Validar el nuevo título en el Domain ─────────────────────────
+    // 🔍 Console: console.log('[USE_CASE] ActualizarTarea.execute — validando en Domain')
     TareaEntity.validarCreacion(input.titulo)
     // Reutilizamos validarCreacion — las reglas del título son las mismas.
     // El Domain tiene UN solo lugar donde vive esa regla.
+    // Iron Law 2: TODAS las escrituras pasan por UseCase → Domain valida SIEMPRE.
 
     // ── Paso 2: Delegar la actualización al Repositorio ──────────────────────
+    // 🔍 Console: console.log('[USE_CASE] ActualizarTarea — Domain OK, delegando a repo')
+    // 🔍 Network: PUT /api/v1/tareas/{id} → Payload: { titulo, completada }
     return await this.repo.actualizar(id, input)
     // Si la tarea no existe, el repo lanza un Error → el hook activa "onError".
   }

@@ -1,16 +1,15 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // CAPA: ADAPTERS — Hooks de Escritura (React Query / useMutation)
 //
+// Posición en la cadena de dependencias:
+//   Presentation → useCrearTarea().mutate(input) → mutationFn → CrearTarea.execute()
+//               → Domain (TareaEntity.validarCreacion) → repo → HTTP POST/PUT/DELETE
+//               → onSuccess → invalidateQueries → GET fresco → UI actualizada
+//
+// Adapter entre React Query y los UseCases de escritura.
 // ★ El hook ES el Adapter: conecta el mundo React con UseCase + Domain + repo.
 //   "Enchufado" = instancia repo (Infrastructure) + UseCase (Application) y los
 //   envuelve en useMutation para que React Query maneje el ciclo de vida async.
-//
-// ─────────────────────────────────────────────────────────────────────────────
-// RECORRIDO DE CAPAS (escritura — DEBE pasar por UseCase + Domain):
-//
-//   Presentation → Adapter (este hook) → Application (UseCase)
-//              → Domain (Entity.validarCreacion) → Infrastructure (repo) → HTTP
-//              → onSuccess → invalidateQueries → GET fresco → UI actualizada
 //
 // ─────────────────────────────────────────────────────────────────────────────
 // ★ INVALIDACIÓN CON ROL EN EL QUERYKEY
@@ -23,16 +22,25 @@
 //     → invalida ['tareas', 'ADMIN']  ✅
 //     → invalida ['tareas', 'VIEWER'] ✅
 //
-//   Esto es el "prefix matching" de React Query: la clave pasada actúa como prefijo.
+//   Esto es el "prefix matching" de React Query.
 //
-// ✅ Puede importar: infrastructure (repos), application (use cases + inputDTO), domain
-// ❌ NO puede importar: componentes .tsx, stores de Zustand
+// Regla de dependencias (Clean Architecture — Ley de Dependencia):
+//   ✅ Puede importar: infrastructure (repos), application (use cases + inputDTO), domain
+//   ❌ NO puede importar: componentes .tsx, stores de Zustand
+//
+// 🔍 DevTools — cómo observar este archivo en acción:
+//   Network: POST/PUT/DELETE aparecen acá.
+//   React Query DevTools: después de onSuccess → query ['tareas', *] pasa a
+//   'invalidated' → 'fetching' → 'fresh' automáticamente.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { TAREAS_BASE_KEY } from './useTareasQueries'
-// Importamos TAREAS_BASE_KEY (no TAREAS_QUERY_KEY que ya no existe).
+// Importamos TAREAS_BASE_KEY desde el archivo de queries.
 // Es la raíz ['tareas'] — invalida TODAS las variantes de rol de una vez.
+//
+// 🔍 React Query DevTools: prefix matching — invalida ['tareas', 'ADMIN']
+// Y ['tareas', 'VIEWER'] de un solo golpe al usar esta key base.
 
 import { TareaRepositoryImpl } from '@/infrastructure/repositories/TareaRepositoryImpl'
 import { CrearTarea }      from '@/application/useCases/Tareas/CrearTarea'
@@ -49,6 +57,8 @@ import type { TareaOutputDTO } from '@/domain/outputDTO/TareaOutputDTO'
 
 export type { TareaOutputDTO }          from '@/domain/outputDTO/TareaOutputDTO'
 export type { CrearTareaInput, ActualizarTareaInput } from '@/application/inputDTO/TareaInputDTO'
+// Hook Portero: Iron Law 1 garantizado — Presentation NUNCA importa de Infrastructure.
+// El componente importa TareaOutputDTO desde acá, no desde domain/ directamente.
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -60,12 +70,17 @@ export function useCrearTarea() {
 
   return useMutation<TareaOutputDTO, Error, CrearTareaInput>({
     mutationFn: async (input: CrearTareaInput) => {
+      // El mutationFn instancia repo + UseCase en el momento de la mutación.
+      // (No hay factories/ — el hook hace la instanciación directamente.)
       const repo    = new TareaRepositoryImpl()
       const useCase = new CrearTarea(repo)
       return useCase.execute(input)
-      // UseCase valida en Domain → persiste en repo → devuelve TareaOutputDTO
+      // UseCase valida en Domain → si falla → Error → onError del componente
+      // UseCase persiste en repo → devuelve TareaOutputDTO → onSuccess
     },
     onSuccess: () => {
+      // 🔍 React Query DevTools: observá cómo la query ['tareas', 'ADMIN'] y
+      // ['tareas', 'VIEWER'] pasan a 'stale' → 'fetching' automáticamente.
       queryClient.invalidateQueries({ queryKey: TAREAS_BASE_KEY })
       // TAREAS_BASE_KEY = ['tareas']
       // Invalida ['tareas', 'ADMIN'] Y ['tareas', 'VIEWER'] de una sola vez.
@@ -88,10 +103,12 @@ export function useActualizarTarea() {
       const repo    = new TareaRepositoryImpl()
       const useCase = new ActualizarTarea(repo)
       return useCase.execute(id, input)
+      // 🔍 Network: PUT /api/v1/tareas/{id} con { titulo, completada }
     },
     onSuccess: () => {
+      // 🔍 React Query DevTools: después de un PUT exitoso → ambas queries
+      // ['tareas', 'ADMIN'] y ['tareas', 'VIEWER'] se invalidan y re-fetchan.
       queryClient.invalidateQueries({ queryKey: TAREAS_BASE_KEY })
-      // Ídem: invalida ['tareas', 'ADMIN'] y ['tareas', 'VIEWER'].
       // Importante: si un VIEWER marca una tarea como completada,
       // después de la invalidación el VIEWER la verá en su lista (porque
       // VIEWER ve solo completadas). Antes de completarla, no la veía.
@@ -113,6 +130,7 @@ export function useEliminarTarea() {
       const repo    = new TareaRepositoryImpl()
       const useCase = new EliminarTarea(repo)
       return useCase.execute(id)
+      // 🔍 Network: DELETE /api/v1/tareas/{id} → status 204 sin body.
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: TAREAS_BASE_KEY })

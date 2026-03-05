@@ -1,48 +1,30 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // CAPA: PRESENTATION — Componente: TareaList
 //
-// ★ Este componente demuestra la ARQUITECTURA DE ESTADO DUAL:
+// Posición en la cadena de dependencias:
+//   TareasPage → TareaList → useListarTareas() (React Query, datos del servidor)
+//                          → useFiltroTareasStore() (Zustand, filtro de UI)
+//                          → .filter() (JS puro, sin HTTP)
 //
-//   REACT QUERY → provee los datos del servidor (lista de tareas)
-//   ZUSTAND     → provee el estado de UI (qué tab/filtro está activo)
+// ★ Arquitectura de estado DUAL:
+//   REACT QUERY → datos del servidor, ya filtrados por ROL en el UseCase
+//   ZUSTAND     → filtro de tab activo (UI state, sin I/O)
+//   Ambos se combinan con un simple .filter() — sin lógica especial.
 //
-// ─────────────────────────────────────────────────────────────────────────────
-// CÓMO CONVIVEN ZUSTAND Y REACT QUERY EN ESTE COMPONENTE:
+// Regla de dependencias:
+//   ✅ Puede importar: adapters/ui/hooks/, adapters/ui/state/
+//   ❌ NO puede importar: repositorios, Use Cases, fetch, infrastructure
 //
-//   ┌─────────────────────────────────────────────────────────────────┐
-//   │                     TareaList (este componente)                 │
-//   │                                                                 │
-//   │  useListarTareas()          useFiltroTareasStore()              │
-//   │  ↓ React Query              ↓ Zustand                          │
-//   │  tareas: TareaOutputDTO[]      filtro: 'todas'|'pendientes'|...   │
-//   │  (del backend, cacheado)    (en RAM, sin HTTP)                  │
-//   │                                                                 │
-//   │  tareasFiltradas = tareas.filter(según filtro)                  │
-//   │  ↑ JS puro — combina los dos mundos sin lógica especial         │
-//   └─────────────────────────────────────────────────────────────────┘
-//
-// React Query NO sabe qué filtro está activo.
-// Zustand NO sabe qué tareas hay.
-// Este componente los une con un simple .filter().
-//
-// ─────────────────────────────────────────────────────────────────────────────
-// FLUJO CUANDO EL USUARIO HACE CLICK EN UN TAB:
-//
-//   1. onClick → setFiltro('pendientes')
-//   2. Zustand actualiza: { filtro: 'pendientes' }
-//   3. TareaList re-renderiza (Zustand notifica el cambio)
-//   4. tareasFiltradas = tareas.filter(t => !t.completada)
-//   5. UI muestra solo las tareas pendientes
-//   ⚡ Sin fetch HTTP — los datos ya están en el cache de React Query
-//   ⚡ Sin useState — Zustand maneja el estado del tab
-//
-// ✅ Puede importar: adapters/ui/hooks/, adapters/ui/state/
-// ❌ NO puede importar: repositorios, Use Cases, fetch, infrastructure
+// 🔍 DevTools — cómo observar este archivo en acción:
+//   React DevTools > Components > TareaList:
+//     hooks[0].data = tareas ya filtradas por ROL (React Query)
+//     hooks Zustand: filtro activo ('todas'|'pendientes'|'completadas')
+//   Network: NO hay request al cambiar el tab — solo .filter() en JS.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { useListarTareas, type TareaOutputDTO } from '@/adapters/ui/hooks/useTareasQueries'
-// React Query hook — provee los datos del servidor.
-// "type TareaOutputDTO" → TypeScript: importamos solo el tipo (desaparece al compilar).
+// React Query hook — provee los datos ya filtrados por ROL desde el UseCase.
+// 🔍 React DevTools > TareaList > hooks: 'data' contiene solo lo que el UseCase permitió para el rol.
 
 import { useFiltroTareasStore } from '@/adapters/ui/state/stores/useFiltroTareasStore'
 import {
@@ -50,25 +32,17 @@ import {
   selectSetFiltro,
 } from '@/adapters/ui/state/selectors/filtroTareasSelectors'
 import type { Filtro } from '@/adapters/ui/state/stores/useFiltroTareasStore'
-// Zustand store + selectores — viven en adapters/ui/state/ junto a los hooks.
-// El estado de UI no hace I/O → no es infrastructure. Es parte del adapter de UI.
-//
-// "useFiltroTareasStore(selectFiltro)" → selector:
-//   re-renderiza SOLO cuando "filtro" cambia, no si cambia otra parte del store.
+// Zustand store para el filtro de tab — estado de UI, sin I/O.
+// Selectores granulares → re-renderiza solo si cambia filtro o setFiltro.
 
 import { TareaItem } from './TareaItem'
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Configuración de los tabs
+// Configuración de tabs
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TABS: { valor: Filtro; label: string }[] = [
-  // "const TABS" = array JavaScript constante — existe en runtime.
-  // "{ valor: Filtro; label: string }[]" → TypeScript: array de objetos con esa forma.
-  // Definir los tabs como array de datos (no como JSX hardcodeado) permite
-  // renderizarlos con .map() sin repetir código.
-
   { valor: 'todas',       label: 'Todas'       },
   { valor: 'pendientes',  label: 'Pendientes'  },
   { valor: 'completadas', label: 'Completadas' },
@@ -77,31 +51,18 @@ const TABS: { valor: Filtro; label: string }[] = [
 
 export function TareaList() {
 
-  // ── 1. REACT QUERY: datos del servidor ──────────────────────────────────────
+  // ── 1. REACT QUERY: datos del servidor (filtrados por ROL en UseCase) ────────
   const { data: tareas, isLoading, isError, error } = useListarTareas()
-  // "useListarTareas()" → React Query.
-  // Devuelve los datos cacheados (HIT, ~5ms) o hace fetch (MISS, ~200-500ms).
-  // "data: tareas" → renombramos "data" a "tareas" para claridad en este archivo.
-  // Tipo: TareaOutputDTO[] | undefined  ("undefined" mientras carga la primera vez)
+  // ADMIN recibe todas. VIEWER recibe solo las completadas.
+  // Cache HIT (~5ms) o cache MISS → fetch (~200-500ms).
 
-  // ── 2. ZUSTAND: estado de UI ─────────────────────────────────────────────────
+  // ── 2. ZUSTAND: filtro de tab (estado de UI, sin HTTP) ───────────────────────
+  // 🔍 React DevTools: 'State' del store cambia al hacer click en tabs — sin request HTTP.
   const filtro    = useFiltroTareasStore(selectFiltro)
   const setFiltro = useFiltroTareasStore(selectSetFiltro)
-  // Usamos SELECTORES en lugar de desestructurar el store completo.
-  //
-  // selectFiltro    → devuelve state.filtro
-  // selectSetFiltro → devuelve state.setFiltro
-  //
-  // Zustand llama el selector con el estado actual y devuelve solo esa parte.
-  // Este componente re-renderiza SOLO si cambia filtro o setFiltro.
-  //
-  // ¿Cuándo re-renderiza?
-  //   Con React Query: cuando los datos del servidor cambian (nuevo fetch).
-  //   Con Zustand: cuando el filtro cambia (click en tab).
-  //   Son independientes — cada uno dispara su propio re-render.
 
 
-  // ── Estados de carga y error (React Query) ───────────────────────────────────
+  // ── Estados de carga y error ─────────────────────────────────────────────────
 
   if (isLoading) {
     return (
@@ -119,42 +80,24 @@ export function TareaList() {
     )
   }
 
-  // ── 3. FILTRADO: combina Zustand + React Query con JS puro ───────────────────
+  // ── 3. FILTRADO: combina React Query (rol) + Zustand (tab) con JS puro ───────
 
   const todas       = tareas ?? []
-  // "??" = nullish coalescing operator (JavaScript).
-  // Si "tareas" es undefined o null → devuelve [] (array vacío).
-  // Si "tareas" tiene valor → devuelve ese valor.
-  // Necesario porque "data" de useQuery es TareaOutputDTO[] | undefined.
-
   const pendientes  = todas.filter((t: TareaOutputDTO) => !t.completada)
   const completadas = todas.filter((t: TareaOutputDTO) =>  t.completada)
-  // ".filter()" = método de array JavaScript. No modifica "todas" — devuelve un nuevo array.
-  // "!t.completada" = tareas que NO están completadas (pendientes).
-  // " t.completada" = tareas que SÍ están completadas.
+  // 🔍 Network: NO hay request acá. El filtro de tab es .filter() sobre datos ya en cache.
 
   const conteos: Record<Filtro, number> = {
-    // "Record<Filtro, number>" = TypeScript: objeto donde las claves son Filtro
-    // y los valores son numbers. Equivale a:
-    // { todas: number; pendientes: number; completadas: number }
     todas:       todas.length,
     pendientes:  pendientes.length,
     completadas: completadas.length,
   }
-  // conteos se usa para mostrar "(3)" al lado del label de cada tab.
 
   const tareasFiltradas: TareaOutputDTO[] =
     filtro === 'todas'       ? todas       :
     filtro === 'pendientes'  ? pendientes  :
                                completadas
-  // Operador ternario encadenado: selecciona el array según el filtro activo.
   // Zustand provee "filtro" → JS selecciona el array → React Query tenía los datos.
-  // ¡Los dos mundos se unen aquí en una sola línea!
-  //
-  // Equivalente más explícito:
-  //   if (filtro === 'todas')       return todas
-  //   if (filtro === 'pendientes')  return pendientes
-  //   return completadas
 
 
   // ── Renderizado ──────────────────────────────────────────────────────────────
@@ -163,63 +106,26 @@ export function TareaList() {
     <div>
 
       {/* ── TAB BAR — controlado por Zustand ─────────────────────────────── */}
-      <div
-        className="flex border-b border-gray-200 mb-4"
-        role="tablist"
-        // "role='tablist'" = accesibilidad HTML. Le dice al lector de pantalla
-        // que este div es una barra de tabs.
-      >
+      <div className="flex border-b border-gray-200 mb-4" role="tablist">
         {TABS.map(({ valor, label }) => {
-          // ".map()" recorre el array TABS y devuelve un <button> por cada tab.
-          // "{ valor, label }" = destructuring del objeto { valor: 'todas', label: 'Todas' }.
-
           const estaActivo = filtro === valor
-          // "filtro" viene de Zustand. "valor" es el valor de este tab.
-          // Si coinciden → este tab está activo → aplicamos estilos distintos.
-          // "===" = igualdad estricta en JavaScript (tipo + valor deben coincidir).
+          // "filtro" viene de Zustand. Si coincide con este tab → estilos activos.
 
           return (
             <button
               key={valor}
-              // "key" → prop especial de React para identificar elementos en listas.
-              // Debe ser único entre hermanos.
-
               role="tab"
               aria-selected={estaActivo}
-              // "aria-selected" = accesibilidad: indica al lector de pantalla
-              // si este tab está seleccionado.
-
               onClick={() => setFiltro(valor)}
-              // "onClick" → se ejecuta cuando el usuario hace click.
-              // "() => setFiltro(valor)" → arrow function que llama a Zustand.
-              //
-              // Flujo:
-              //   Click en "Pendientes"
-              //   → setFiltro('pendientes')  [Zustand]
-              //   → store actualiza: { filtro: 'pendientes' }
-              //   → TareaList re-renderiza
-              //   → estaActivo = true para el tab 'pendientes'
-              //   → tareasFiltradas = pendientes[]
-              //   → UI muestra solo pendientes
+              // Flujo: click → setFiltro (Zustand) → re-render → tareasFiltradas actualizado
+              // SIN nueva request HTTP.
 
               className={[
-                // "className" en React = el atributo "class" de HTML.
-                // En JSX se llama "className" porque "class" es palabra reservada en JS.
-
                 'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
-                // Clases Tailwind comunes a todos los tabs:
-                // px-4 py-2 = padding. text-sm = tamaño de texto.
-                // border-b-2 = borde inferior. transition-colors = transición suave.
-
                 estaActivo
                   ? 'border-blue-500 text-blue-600'
-                  // Tab activo: borde azul + texto azul.
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                  // Tab inactivo: borde transparente, texto gris.
-                  // "hover:" = estilos que se aplican al pasar el mouse (Tailwind).
               ].join(' ')}
-              // ".join(' ')" = une el array de strings en uno separado por espacios.
-              // Resultado: "px-4 py-2 ... border-blue-500 text-blue-600"
             >
               {label}
               {' '}
@@ -228,18 +134,13 @@ export function TareaList() {
                 estaActivo ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500',
               ].join(' ')}>
                 {conteos[valor]}
-                {/* Muestra el número de tareas de este tab: (3), (2), etc. */}
-                {/* "conteos[valor]" → acceso a objeto con clave dinámica. */}
-                {/* TypeScript: Record<Filtro, number> garantiza que valor sea una clave válida. */}
               </span>
             </button>
           )
         })}
       </div>
-      {/* ── FIN TAB BAR ──────────────────────────────────────────────────── */}
 
-
-      {/* ── LISTA FILTRADA — datos de React Query, filtro de Zustand ──────── */}
+      {/* ── LISTA FILTRADA ────────────────────────────────────────────────── */}
       {tareasFiltradas.length === 0 ? (
         <div className="text-center py-8 text-gray-400">
           <p className="text-sm">
@@ -249,14 +150,13 @@ export function TareaList() {
               ? 'No hay tareas pendientes.'
               : 'No hay tareas completadas.'}
           </p>
-          {/* Mensaje contextual según el filtro activo (Zustand). */}
         </div>
       ) : (
         <ul className="space-y-2">
           {tareasFiltradas.map((tarea: TareaOutputDTO) => (
             <TareaItem key={tarea.id} tarea={tarea} />
-            // React Query proveyó los datos. Zustand filtró cuáles mostrar.
-            // TareaItem renderiza cada una — no sabe nada de filtros ni cache.
+            // React Query proveyó los datos (filtrados por rol en UseCase).
+            // Zustand filtró el tab. TareaItem renderiza cada una — no sabe nada de filtros.
           ))}
         </ul>
       )}

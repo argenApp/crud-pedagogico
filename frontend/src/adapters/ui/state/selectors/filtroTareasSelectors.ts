@@ -1,5 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// CAPA: ADAPTERS — State Selectors (Zustand)
+// CAPA: ADAPTERS — State Selectors: Filtro de Tareas
+//
+// Posición en la cadena de dependencias:
+//   Presentation → useFiltroTareasStore(selectFiltro) → [filtro actual]
+//   Los selectores son funciones puras — no son hooks, no tienen estado propio.
 //
 // ★ Este archivo contiene SELECTORES del store de filtro de tareas.
 //
@@ -26,7 +30,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // ¿POR QUÉ están en adapters/ui/state/selectors/ y no en el store?
 //
-//   Store   → define QUÉ existe en el estado (estado + acciones)
+//   Store    → define QUÉ existe en el estado (estado + acciones)
 //   Selector → define CÓMO leer partes del estado de forma eficiente
 //
 //   Separar permite:
@@ -35,16 +39,22 @@
 //   → El store no crece con lógica de lectura — solo tiene estado y acciones
 //
 // ─────────────────────────────────────────────────────────────────────────────
-// PATRÓN DE USO EN EL COMPONENTE:
+// ¿POR QUÉ también hay selectores para las ACCIONES (setFiltro)?
 //
-//   import { selectFiltro, selectSetFiltro } from '@/infrastructure/state/selectors/filtroTareasSelectors'
-//   import { useFiltroTareasStore } from '@/adapters/ui/state/stores/useFiltroTareasStore'
+//   Las acciones también son parte del estado de Zustand.
+//   Usar selector para acciones garantiza que el componente no re-renderice
+//   si la acción cambia (aunque en Zustand las acciones son estables — misma
+//   referencia en cada render).
+//   Es buena práctica mantener consistencia: TODO se lee con selectores.
 //
-//   const filtro    = useFiltroTareasStore(selectFiltro)
-//   const setFiltro = useFiltroTareasStore(selectSetFiltro)
+// Regla de dependencias (Clean Architecture — Ley de Dependencia):
+//   ✅ Puede importar: tipos del store (FiltroTareasStore, Filtro)
+//   ❌ NO puede importar: React, componentes, repositorios, React Query
 //
-// ✅ Puede importar: tipos del store (FiltroTareasStore, Filtro)
-// ❌ NO puede importar: React, componentes, repositorios, React Query
+// 🔍 DevTools — cómo observar este archivo en acción:
+//   React DevTools > Profiler: con selectores, el componente solo re-renderiza
+//   cuando su slice específica del store cambia (no el store completo).
+//   En una app grande, esto evita re-renders en cascada innecesarios.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import type { Filtro } from '@/adapters/ui/state/stores/useFiltroTareasStore'
