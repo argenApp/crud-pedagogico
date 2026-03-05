@@ -14,7 +14,7 @@
 //     → Es el "ciudadano de pleno derecho" del Domain.
 //     → TareaEntity.validarCreacion() vive ahí — es comportamiento.
 //
-//   Output DTO → src/domain/outputDTO/TareaOutput.ts  ← ESTE ARCHIVO
+//   Output DTO → src/domain/outputDTO/TareaOutputDTO.ts  ← ESTE ARCHIVO
 //     → Define QUÉ DATOS devuelve el sistema hacia afuera.
 //     → Es un objeto de datos puro: SIN métodos, SIN comportamiento.
 //     → Es el "sobre de respuesta" del UseCase hacia la Presentation.
@@ -28,10 +28,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Mapa de dónde nacen los DTOs:
 //
-//   ★ INPUT DTO  → application/dto/inputTareaDto.ts  (CrearTareaInput, ActualizarTareaInput)
+//   ★ INPUT DTO  → application/inputDTO/TareaInputDTO.ts  (CrearTareaInput, ActualizarTareaInput)
 //                  Lo que el USUARIO envía hacia adentro (sube).
 //
-//   ★ OUTPUT DTO → domain/outputDTO/TareaOutput.ts  ← ESTE ARCHIVO
+//   ★ OUTPUT DTO → domain/outputDTO/TareaOutputDTO.ts  ← ESTE ARCHIVO
 //                  Lo que el SISTEMA devuelve hacia afuera (baja).
 //
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,15 +40,15 @@
 //   Convierte el JSON raw del backend (snake_case) en este objeto (camelCase).
 //
 // ¿Quién CONSUME el Output DTO?
-//   → application/use_cases/*.ts  (los UseCases lo devuelven)
-//   → adapters/ui/hooks/useTareas.ts (React Query lo cachea)
+//   → application/useCases/Tareas/*.ts  (los UseCases lo devuelven)
+//   → adapters/ui/hooks/useTareasQueries.ts (React Query lo cachea)
 //   → presentation/components/*.tsx  (los componentes lo usan en onSuccess)
 //
 // ✅ Puede importar: NADA. Es un objeto de datos puro.
 // ❌ NO puede importar: React, fetch, ni nada externo.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export interface TareaOutput {
+export interface TareaOutputDTO {
   // "interface" = TypeScript. SOLO existe al programar. Desaparece al compilar.
   // "export" = importable desde otros archivos.
   // No tiene métodos — es datos puros.

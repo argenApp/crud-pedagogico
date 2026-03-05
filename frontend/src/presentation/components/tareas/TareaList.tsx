@@ -14,7 +14,7 @@
 //   │                                                                 │
 //   │  useListarTareas()          useFiltroTareasStore()              │
 //   │  ↓ React Query              ↓ Zustand                          │
-//   │  tareas: TareaOutput[]      filtro: 'todas'|'pendientes'|...   │
+//   │  tareas: TareaOutputDTO[]      filtro: 'todas'|'pendientes'|...   │
 //   │  (del backend, cacheado)    (en RAM, sin HTTP)                  │
 //   │                                                                 │
 //   │  tareasFiltradas = tareas.filter(según filtro)                  │
@@ -40,9 +40,9 @@
 // ❌ NO puede importar: repositorios, Use Cases, fetch, infrastructure
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import { useListarTareas, type TareaOutput } from '@/adapters/ui/hooks/useTareasQueries'
+import { useListarTareas, type TareaOutputDTO } from '@/adapters/ui/hooks/useTareasQueries'
 // React Query hook — provee los datos del servidor.
-// "type TareaOutput" → TypeScript: importamos solo el tipo (desaparece al compilar).
+// "type TareaOutputDTO" → TypeScript: importamos solo el tipo (desaparece al compilar).
 
 import { useFiltroTareasStore } from '@/adapters/ui/state/stores/useFiltroTareasStore'
 import {
@@ -82,7 +82,7 @@ export function TareaList() {
   // "useListarTareas()" → React Query.
   // Devuelve los datos cacheados (HIT, ~5ms) o hace fetch (MISS, ~200-500ms).
   // "data: tareas" → renombramos "data" a "tareas" para claridad en este archivo.
-  // Tipo: TareaOutput[] | undefined  ("undefined" mientras carga la primera vez)
+  // Tipo: TareaOutputDTO[] | undefined  ("undefined" mientras carga la primera vez)
 
   // ── 2. ZUSTAND: estado de UI ─────────────────────────────────────────────────
   const filtro    = useFiltroTareasStore(selectFiltro)
@@ -125,10 +125,10 @@ export function TareaList() {
   // "??" = nullish coalescing operator (JavaScript).
   // Si "tareas" es undefined o null → devuelve [] (array vacío).
   // Si "tareas" tiene valor → devuelve ese valor.
-  // Necesario porque "data" de useQuery es TareaOutput[] | undefined.
+  // Necesario porque "data" de useQuery es TareaOutputDTO[] | undefined.
 
-  const pendientes  = todas.filter((t: TareaOutput) => !t.completada)
-  const completadas = todas.filter((t: TareaOutput) =>  t.completada)
+  const pendientes  = todas.filter((t: TareaOutputDTO) => !t.completada)
+  const completadas = todas.filter((t: TareaOutputDTO) =>  t.completada)
   // ".filter()" = método de array JavaScript. No modifica "todas" — devuelve un nuevo array.
   // "!t.completada" = tareas que NO están completadas (pendientes).
   // " t.completada" = tareas que SÍ están completadas.
@@ -143,7 +143,7 @@ export function TareaList() {
   }
   // conteos se usa para mostrar "(3)" al lado del label de cada tab.
 
-  const tareasFiltradas: TareaOutput[] =
+  const tareasFiltradas: TareaOutputDTO[] =
     filtro === 'todas'       ? todas       :
     filtro === 'pendientes'  ? pendientes  :
                                completadas
@@ -253,7 +253,7 @@ export function TareaList() {
         </div>
       ) : (
         <ul className="space-y-2">
-          {tareasFiltradas.map((tarea: TareaOutput) => (
+          {tareasFiltradas.map((tarea: TareaOutputDTO) => (
             <TareaItem key={tarea.id} tarea={tarea} />
             // React Query proveyó los datos. Zustand filtró cuáles mostrar.
             // TareaItem renderiza cada una — no sabe nada de filtros ni cache.

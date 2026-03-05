@@ -2,7 +2,7 @@
 // CAPA: APPLICATION — Use Case: ListarTareas
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import type { TareaOutput } from '@/domain/outputDTO/TareaOutput'
+import type { TareaOutputDTO } from '@/domain/outputDTO/TareaOutputDTO'
 // OUTPUT DTO — lo que devuelve este UseCase: un array de datos puros.
 // "type" antes del import = TypeScript puro, desaparece al compilar.
 
@@ -16,8 +16,8 @@ export class ListarTareas {
     this.repo = repo
   }
 
-  async execute(): Promise<TareaOutput[]> {
-    // "TareaOutput[]" = array de Output DTOs.
+  async execute(): Promise<TareaOutputDTO[]> {
+    // "TareaOutputDTO[]" = array de Output DTOs.
     // TypeScript verifica que el repo devuelva exactamente eso.
     // El UseCase de lectura sin filtros es así de simple: una sola línea.
     // Si mañana necesitaras filtrar por estado o paginar, el código iría aquí —

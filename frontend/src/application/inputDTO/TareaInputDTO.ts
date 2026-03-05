@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // CAPA: APPLICATION — DTOs de Entrada (Input DTOs)
 //
-// Nombre del archivo: input{Entity}Dto.ts → inputTareaDto.ts
+// Nombre del archivo: TareaInputDTO.ts
 // Convención: todos los INPUT DTOs de una entidad viven en UN solo archivo.
 // "Find All References" en CrearTareaInput muestra la cadena completa.
 //
@@ -12,9 +12,9 @@
 // El UseCase es de Application — entonces sus DTOs también.
 //
 // INPUT DTO ≠ OUTPUT DTO:
-//   INPUT  → application/dto/inputTareaDto.ts  ← ESTE ARCHIVO
+//   INPUT  → application/inputDTO/TareaInputDTO.ts  ← ESTE ARCHIVO
 //             Lo que el USUARIO envía hacia adentro (sin id, sin creadaEn).
-//   OUTPUT → domain/outputDTO/TareaOutput.ts
+//   OUTPUT → domain/outputDTO/TareaOutputDTO.ts
 //             Lo que el SISTEMA devuelve hacia afuera (con id, con creadaEn).
 //
 // ✅ Puede importar: nada (son interfaces puras de TypeScript)

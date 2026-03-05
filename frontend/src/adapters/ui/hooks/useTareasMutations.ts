@@ -12,7 +12,7 @@
 //              → Domain (Entity.validarCreacion) → Infrastructure (repo) → HTTP
 //              → onSuccess → invalidateQueries → GET fresco → UI actualizada
 //
-// ✅ Puede importar: infrastructure (repos), application (use cases + dto), domain
+// ✅ Puede importar: infrastructure (repos), application (use cases + inputDTO), domain
 // ❌ NO puede importar: componentes .tsx, stores de Zustand
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -21,20 +21,20 @@ import { TAREAS_QUERY_KEY } from './useTareasQueries'
 // La clave viene de Queries — única fuente de verdad para invalidación.
 
 import { TareaRepositoryImpl } from '@/infrastructure/repositories/TareaRepositoryImpl'
-import { CrearTarea }      from '@/application/use_cases/CrearTarea'
-import { ActualizarTarea } from '@/application/use_cases/ActualizarTarea'
-import { EliminarTarea }   from '@/application/use_cases/EliminarTarea'
+import { CrearTarea }      from '@/application/useCases/Tareas/CrearTarea'
+import { ActualizarTarea } from '@/application/useCases/Tareas/ActualizarTarea'
+import { EliminarTarea }   from '@/application/useCases/Tareas/EliminarTarea'
 
-import type { CrearTareaInput, ActualizarTareaInput } from '@/application/dto/inputTareaDto'
-import type { TareaOutput } from '@/domain/outputDTO/TareaOutput'
+import type { CrearTareaInput, ActualizarTareaInput } from '@/application/inputDTO/TareaInputDTO'
+import type { TareaOutputDTO } from '@/domain/outputDTO/TareaOutputDTO'
 
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Re-export de tipos — el componente importa todo desde este hook
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type { TareaOutput }          from '@/domain/outputDTO/TareaOutput'
-export type { CrearTareaInput, ActualizarTareaInput } from '@/application/dto/inputTareaDto'
+export type { TareaOutputDTO }          from '@/domain/outputDTO/TareaOutputDTO'
+export type { CrearTareaInput, ActualizarTareaInput } from '@/application/inputDTO/TareaInputDTO'
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -44,12 +44,12 @@ export type { CrearTareaInput, ActualizarTareaInput } from '@/application/dto/in
 export function useCrearTarea() {
   const queryClient = useQueryClient()
 
-  return useMutation<TareaOutput, Error, CrearTareaInput>({
+  return useMutation<TareaOutputDTO, Error, CrearTareaInput>({
     mutationFn: async (input: CrearTareaInput) => {
       const repo    = new TareaRepositoryImpl()
       const useCase = new CrearTarea(repo)
       return useCase.execute(input)
-      // UseCase valida en Domain → persiste en repo → devuelve TareaOutput
+      // UseCase valida en Domain → persiste en repo → devuelve TareaOutputDTO
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: TAREAS_QUERY_KEY })
@@ -66,7 +66,7 @@ export function useCrearTarea() {
 export function useActualizarTarea() {
   const queryClient = useQueryClient()
 
-  return useMutation<TareaOutput, Error, { id: string; input: ActualizarTareaInput }>({
+  return useMutation<TareaOutputDTO, Error, { id: string; input: ActualizarTareaInput }>({
     mutationFn: async ({ id, input }: { id: string; input: ActualizarTareaInput }) => {
       const repo    = new TareaRepositoryImpl()
       const useCase = new ActualizarTarea(repo)

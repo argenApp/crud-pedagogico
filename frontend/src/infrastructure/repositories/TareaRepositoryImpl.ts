@@ -17,16 +17,16 @@
 // │  La conversión ocurre SOLO en _toOutputDTO(). En ningún otro archivo.   │
 // └──────────────────────────────────────────────────────────────────────────┘
 //
-// ✅ Puede importar: domain/outputDTO, domain/entities, application/dto, application/ports, apiClient
+// ✅ Puede importar: domain/outputDTO, domain/entities, application/inputDTO, application/ports, apiClient
 // ❌ NO puede importar: React, hooks, componentes de presentación
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import type { TareaOutput } from '@/domain/outputDTO/TareaOutput'
+import type { TareaOutputDTO } from '@/domain/outputDTO/TareaOutputDTO'
 // OUTPUT DTO — lo que esta capa produce y entrega hacia arriba (hacia los UseCases).
 // Vive en domain/outputDTO/ — carpeta dedicada, separada de domain/entities/.
 // "type" = TypeScript puro, desaparece al compilar.
 
-import type { CrearTareaInput, ActualizarTareaInput } from '@/application/dto/inputTareaDto'
+import type { CrearTareaInput, ActualizarTareaInput } from '@/application/inputDTO/TareaInputDTO'
 import type { ITareaRepository } from '@/application/ports/ITareaRepository'
 import { apiClient } from '@/infrastructure/api/apiClient'
 
@@ -53,18 +53,18 @@ interface TareaApiResponse {
 // La función de conversión: snake_case → camelCase + produce el Output DTO
 // ─────────────────────────────────────────────────────────────────────────────
 
-function _toOutputDTO(raw: TareaApiResponse): TareaOutput {
+function _toOutputDTO(raw: TareaApiResponse): TareaOutputDTO {
   // "_toOutputDTO" = función "privada" (convención del "_" al inicio).
   // Solo se usa dentro de este archivo.
   //
   // "raw: TareaApiResponse" → el JSON crudo con snake_case del backend.
-  // ": TareaOutput" → lo que devuelve: el Output DTO con camelCase.
+  // ": TareaOutputDTO" → lo que devuelve: el Output DTO con camelCase.
   //
   // Analogía: es el "traductor" entre el idioma del backend (Python, snake_case)
   // y el idioma del frontend (TypeScript, camelCase).
   //
-  // ¿Por qué devolvemos TareaOutput y no la Entity (Tarea)?
-  //   → TareaOutput = datos puros que viajan hacia afuera. No tiene lógica ni métodos.
+  // ¿Por qué devolvemos TareaOutputDTO y no la Entity (Tarea)?
+  //   → TareaOutputDTO = datos puros que viajan hacia afuera. No tiene lógica ni métodos.
   //   → TareaEntity = la clase con lógica (validarCreacion). Solo vive en Domain.
   //   → El repositorio produce Output DTOs, no Entities con comportamiento.
 
@@ -78,7 +78,7 @@ function _toOutputDTO(raw: TareaApiResponse): TareaOutput {
     //
     // Si mañana el backend renombra "creada_en" a "fecha_creacion":
     //   → Solo cambia esta línea.
-    //   → TareaOutput.creadaEn NO cambia.
+    //   → TareaOutputDTO.creadaEn NO cambia.
     //   → Los componentes NO cambian.
     //   → Los UseCases NO cambian.
     // Eso es el poder de aislar la conversión aquí.
@@ -96,7 +96,7 @@ export class TareaRepositoryImpl implements ITareaRepository {
   // Si falta uno, TypeScript falla con: "Property 'X' is missing in type..."
   // Es el compilador actuando como "inspector de calidad".
 
-  async crear(input: CrearTareaInput): Promise<TareaOutput> {
+  async crear(input: CrearTareaInput): Promise<TareaOutputDTO> {
     const raw = await apiClient.post<TareaApiResponse>('/api/v1/tareas/', {
       // "<TareaApiResponse>" = generic que le dice al apiClient qué tipo de respuesta esperar.
       // TypeScript verifica que el resultado sea TareaApiResponse antes de usarlo.
@@ -109,17 +109,17 @@ export class TareaRepositoryImpl implements ITareaRepository {
     // Convertimos la respuesta raw (snake_case) al Output DTO (camelCase).
   }
 
-  async listar(): Promise<TareaOutput[]> {
+  async listar(): Promise<TareaOutputDTO[]> {
     const raws = await apiClient.get<TareaApiResponse[]>('/api/v1/tareas/')
     // "TareaApiResponse[]" → esperamos un array de responses raw.
 
     return raws.map(_toOutputDTO)
     // ".map(_toOutputDTO)" = aplica _toOutputDTO a cada elemento del array.
     // Equivalente a: raws.map((raw) => _toOutputDTO(raw))
-    // Resultado: TareaOutput[] (array de Output DTOs).
+    // Resultado: TareaOutputDTO[] (array de Output DTOs).
   }
 
-  async obtenerPorId(id: string): Promise<TareaOutput | null> {
+  async obtenerPorId(id: string): Promise<TareaOutputDTO | null> {
     try {
       const raw = await apiClient.get<TareaApiResponse>(`/api/v1/tareas/${id}`)
       // Template literal: `/api/tareas/${id}` → `/api/tareas/f47ac10b-...`
@@ -131,7 +131,7 @@ export class TareaRepositoryImpl implements ITareaRepository {
     }
   }
 
-  async actualizar(id: string, input: ActualizarTareaInput): Promise<TareaOutput> {
+  async actualizar(id: string, input: ActualizarTareaInput): Promise<TareaOutputDTO> {
     const raw = await apiClient.put<TareaApiResponse>(`/api/v1/tareas/${id}`, {
       titulo:     input.titulo,
       completada: input.completada,

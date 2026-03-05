@@ -2,13 +2,13 @@
 // CAPA: APPLICATION — Use Case: ActualizarTarea
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import type { TareaOutput } from '@/domain/outputDTO/TareaOutput'
+import type { TareaOutputDTO } from '@/domain/outputDTO/TareaOutputDTO'
 // OUTPUT DTO — lo que devuelve este UseCase tras actualizar la tarea.
 
 import { TareaEntity } from '@/domain/entities/Tarea'
 // La clase con las reglas de negocio. Importación de clase JS — existe en runtime.
 
-import type { ActualizarTareaInput } from '@/application/dto/inputTareaDto'
+import type { ActualizarTareaInput } from '@/application/inputDTO/TareaInputDTO'
 import type { ITareaRepository } from '@/application/ports/ITareaRepository'
 
 
@@ -19,7 +19,7 @@ export class ActualizarTarea {
     this.repo = repo
   }
 
-  async execute(id: string, input: ActualizarTareaInput): Promise<TareaOutput> {
+  async execute(id: string, input: ActualizarTareaInput): Promise<TareaOutputDTO> {
     // "id: string" → el ID de la tarea a actualizar. Viene del componente.
     // "input: ActualizarTareaInput" → los campos nuevos (titulo, completada).
 

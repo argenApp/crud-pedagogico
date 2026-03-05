@@ -31,8 +31,8 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { TareaRepositoryImpl } from '@/infrastructure/repositories/TareaRepositoryImpl'
-import { ListarTareas } from '@/application/use_cases/ListarTareas'
-import type { TareaOutput } from '@/domain/outputDTO/TareaOutput'
+import { ListarTareas } from '@/application/useCases/Tareas/ListarTareas'
+import type { TareaOutputDTO } from '@/domain/outputDTO/TareaOutputDTO'
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,9 +48,9 @@ export const TAREAS_QUERY_KEY = ['tareas'] as const
 // Re-export de tipos — el componente importa todo desde este hook
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type { TareaOutput } from '@/domain/outputDTO/TareaOutput'
-// El componente hace: import { useListarTareas, type TareaOutput } from './useTareasQueries'
-// No necesita saber que TareaOutput viene de domain/ — lo obtiene del Adapter.
+export type { TareaOutputDTO } from '@/domain/outputDTO/TareaOutputDTO'
+// El componente hace: import { useListarTareas, type TareaOutputDTO } from './useTareasQueries'
+// No necesita saber que TareaOutputDTO viene de domain/ — lo obtiene del Adapter.
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -58,7 +58,7 @@ export type { TareaOutput } from '@/domain/outputDTO/TareaOutput'
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function useListarTareas() {
-  return useQuery<TareaOutput[], Error>({
+  return useQuery<TareaOutputDTO[], Error>({
     queryKey: TAREAS_QUERY_KEY,
     queryFn: async () => {
       // Cache MISS: instanciamos el repo y llamamos al UseCase.

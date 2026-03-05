@@ -15,11 +15,11 @@ import { useState } from 'react'
 import {
   useActualizarTarea,
   useEliminarTarea,
-  type TareaOutput,
+  type TareaOutputDTO,
   type ActualizarTareaInput,
 } from '@/adapters/ui/hooks/useTareasMutations'
 // El componente importa TODO desde el hook de mutaciones — incluyendo los tipos re-exportados.
-// "type TareaOutput" → TypeScript. Desaparece al compilar.
+// "type TareaOutputDTO" → TypeScript. Desaparece al compilar.
 // "type ActualizarTareaInput" → TypeScript. Desaparece al compilar.
 
 
@@ -28,9 +28,9 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface TareaItemProps {
-  tarea: TareaOutput
-  // "tarea: TareaOutput" → TypeScript verifica que quien use TareaItem
-  // le pase un TareaOutput completo (id, titulo, completada, creadaEn).
+  tarea: TareaOutputDTO
+  // "tarea: TareaOutputDTO" → TypeScript verifica que quien use TareaItem
+  // le pase un TareaOutputDTO completo (id, titulo, completada, creadaEn).
   // Si falta algún campo, TypeScript falla al programar.
 }
 
