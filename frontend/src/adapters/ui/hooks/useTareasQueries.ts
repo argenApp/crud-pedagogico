@@ -6,42 +6,56 @@
 //   y los conecta con el sistema de cache de React Query.
 //
 // ─────────────────────────────────────────────────────────────────────────────
-// ¿POR QUÉ en adapters/ y no en infrastructure/?
+// RECORRIDO DE CAPAS (lectura con control de acceso por rol):
 //
-//   Infrastructure = repositorios, API clients, stores de Zustand — herramientas
-//   que hablan con el exterior (servidor, localStorage, RAM).
-//
-//   Adapter = el "enchufe" que conecta mundos distintos:
-//     Mundo React (hooks, re-renders, componentes)
-//     Mundo Application (UseCases, execute(), Promises puras)
-//
-//   Este hook es ese enchufe: toma el UseCase (Application) y lo envuelve en
-//   React Query (React). Eso es responsabilidad del Adapter, no de Infrastructure.
+//   Presentation → Adapter (este hook)
+//              → Zustand (selectRol) → obtiene el rol activo
+//              → UseCase.execute(rol) → ReglaRol.filtrarPorRol()
+//              → Infrastructure (repo.listar()) → HTTP GET
+//              → datos filtrados según el rol → cache → UI
 //
 // ─────────────────────────────────────────────────────────────────────────────
-// RECORRIDO DE CAPAS (lectura — omite UseCase+Domain para GET):
+// ★ PUNTO CLAVE: el queryKey incluye el rol
 //
-//   Presentation → Adapter (este hook) → Infrastructure (repo) → HTTP GET
-//   ↑ cache HIT (~5ms) si los datos existen y son frescos
-//   ↑ cache MISS → queryFn ejecuta → fetch → guarda en cache
+//   queryKey: ['tareas', 'ADMIN']   ← cache separado para ADMIN
+//   queryKey: ['tareas', 'VIEWER']  ← cache separado para VIEWER
+//
+//   Cuando el rol cambia → nueva queryKey → React Query hace un nuevo fetch
+//   automáticamente. Sin el rol en la queryKey, un cambio de rol NO dispararía
+//   un re-fetch y el usuario VIEWER podría ver datos de ADMIN cacheados.
 //
 // ✅ Puede importar: infrastructure (repos), application (use cases), domain (tipos)
-// ❌ NO puede importar: componentes .tsx, stores de Zustand
+// ❌ NO puede importar: componentes .tsx, stores de Zustand (excepto para leer rol)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { useQuery } from '@tanstack/react-query'
 import { TareaRepositoryImpl } from '@/infrastructure/repositories/TareaRepositoryImpl'
 import { ListarTareas } from '@/application/useCases/Tareas/ListarTareas'
 import type { TareaOutputDTO } from '@/domain/outputDTO/TareaOutputDTO'
+import { useRolStore } from '@/adapters/ui/state/stores/useRolStore'
+import { selectRol } from '@/adapters/ui/state/selectors/rolSelectors'
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Query Key — exportada para que useTareasMutations la use al invalidar
+// Query Keys — estructura de claves del cache
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const TAREAS_QUERY_KEY = ['tareas'] as const
-// Exportada desde Queries porque la "dueña" de la clave es la lectura.
+export const TAREAS_BASE_KEY = ['tareas'] as const
+// TAREAS_BASE_KEY = la raíz de la clave, usada por las MUTACIONES para invalidar.
+// "invalidateQueries({ queryKey: ['tareas'] })" invalida TODAS las variantes:
+//   ['tareas', 'ADMIN'] y ['tareas', 'VIEWER'] — ambas de una sola vez.
+//
+// Exportada desde Queries porque la "dueña" de la estructura de keys es la lectura.
 // Las mutaciones la importan para saber qué invalidar al escribir.
+
+export const tareasQueryKey = (rol: string) => [...TAREAS_BASE_KEY, rol] as const
+// "tareasQueryKey('ADMIN')" → ['tareas', 'ADMIN']
+// "tareasQueryKey('VIEWER')" → ['tareas', 'VIEWER']
+//
+// El rol en la queryKey garantiza que:
+//   1. ADMIN y VIEWER tienen caches SEPARADOS e independientes.
+//   2. Cambiar de rol dispara un nuevo fetch automáticamente.
+//   3. Los datos de un rol nunca "contaminan" el cache del otro.
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -49,22 +63,44 @@ export const TAREAS_QUERY_KEY = ['tareas'] as const
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type { TareaOutputDTO } from '@/domain/outputDTO/TareaOutputDTO'
-// El componente hace: import { useListarTareas, type TareaOutputDTO } from './useTareasQueries'
+// Hook Portero: el componente hace:
+// import { useListarTareas, type TareaOutputDTO } from './useTareasQueries'
 // No necesita saber que TareaOutputDTO viene de domain/ — lo obtiene del Adapter.
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Hook de LECTURA
+// Hook de LECTURA con control de acceso por rol
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function useListarTareas() {
+  // ── Lee el rol activo desde Zustand ────────────────────────────────────────
+  const rol = useRolStore(selectRol)
+  // "selectRol" es un selector → este hook re-renderiza SOLO si "rol" cambia.
+  // Cuando el usuario cambia de ADMIN a VIEWER:
+  //   1. Zustand actualiza: rol = 'VIEWER'
+  //   2. useRolStore(selectRol) devuelve 'VIEWER'
+  //   3. Este componente re-renderiza
+  //   4. queryKey cambia: ['tareas', 'VIEWER']
+  //   5. React Query detecta queryKey nueva → fetch automático
+
   return useQuery<TareaOutputDTO[], Error>({
-    queryKey: TAREAS_QUERY_KEY,
+    queryKey: tareasQueryKey(rol),
+    // "tareasQueryKey(rol)" → ['tareas', 'ADMIN'] o ['tareas', 'VIEWER']
+    // Si el rol cambia → la queryKey cambia → nuevo fetch → nuevos datos filtrados.
+    // Sin el rol en la queryKey, el cambio de rol NO dispararía re-fetch.
+
     queryFn: async () => {
-      // Cache MISS: instanciamos el repo y llamamos al UseCase.
+      // Cache MISS: instanciamos el repo y llamamos al UseCase con el rol actual.
       const repo    = new TareaRepositoryImpl()
       const useCase = new ListarTareas(repo)
-      return useCase.execute()
+      return useCase.execute(rol)
+      // El UseCase recibe el rol y aplica ReglaRol.filtrarPorRol():
+      //   ADMIN  → todas las tareas
+      //   VIEWER → solo las completadas
+      //
+      // El componente NO sabe del filtrado — recibe los datos ya filtrados.
+      // El repo NO sabe del filtrado — devuelve todos los datos siempre.
+      // SOLO el UseCase + Domain saben qué datos corresponden a cada rol.
     },
   })
 }

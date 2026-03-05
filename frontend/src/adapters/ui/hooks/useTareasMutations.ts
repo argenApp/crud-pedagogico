@@ -12,13 +12,27 @@
 //              → Domain (Entity.validarCreacion) → Infrastructure (repo) → HTTP
 //              → onSuccess → invalidateQueries → GET fresco → UI actualizada
 //
+// ─────────────────────────────────────────────────────────────────────────────
+// ★ INVALIDACIÓN CON ROL EN EL QUERYKEY
+//
+//   Las queries ahora tienen keys: ['tareas', 'ADMIN'] y ['tareas', 'VIEWER']
+//   Al invalidar con TAREAS_BASE_KEY = ['tareas'], React Query invalida TODAS
+//   las variantes cuya key COMIENZA con ['tareas'] — es decir, ambas.
+//
+//   queryClient.invalidateQueries({ queryKey: ['tareas'] })
+//     → invalida ['tareas', 'ADMIN']  ✅
+//     → invalida ['tareas', 'VIEWER'] ✅
+//
+//   Esto es el "prefix matching" de React Query: la clave pasada actúa como prefijo.
+//
 // ✅ Puede importar: infrastructure (repos), application (use cases + inputDTO), domain
 // ❌ NO puede importar: componentes .tsx, stores de Zustand
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { TAREAS_QUERY_KEY } from './useTareasQueries'
-// La clave viene de Queries — única fuente de verdad para invalidación.
+import { TAREAS_BASE_KEY } from './useTareasQueries'
+// Importamos TAREAS_BASE_KEY (no TAREAS_QUERY_KEY que ya no existe).
+// Es la raíz ['tareas'] — invalida TODAS las variantes de rol de una vez.
 
 import { TareaRepositoryImpl } from '@/infrastructure/repositories/TareaRepositoryImpl'
 import { CrearTarea }      from '@/application/useCases/Tareas/CrearTarea'
@@ -52,8 +66,11 @@ export function useCrearTarea() {
       // UseCase valida en Domain → persiste en repo → devuelve TareaOutputDTO
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: TAREAS_QUERY_KEY })
-      // Cache borrado → MISS → GET fresco → lista actualizada automáticamente
+      queryClient.invalidateQueries({ queryKey: TAREAS_BASE_KEY })
+      // TAREAS_BASE_KEY = ['tareas']
+      // Invalida ['tareas', 'ADMIN'] Y ['tareas', 'VIEWER'] de una sola vez.
+      // React Query usa prefix matching: todo queryKey que empiece con ['tareas']
+      // queda invalidado → ambos roles ven datos frescos en su próximo render.
     },
   })
 }
@@ -73,7 +90,11 @@ export function useActualizarTarea() {
       return useCase.execute(id, input)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: TAREAS_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: TAREAS_BASE_KEY })
+      // Ídem: invalida ['tareas', 'ADMIN'] y ['tareas', 'VIEWER'].
+      // Importante: si un VIEWER marca una tarea como completada,
+      // después de la invalidación el VIEWER la verá en su lista (porque
+      // VIEWER ve solo completadas). Antes de completarla, no la veía.
     },
   })
 }
@@ -94,7 +115,7 @@ export function useEliminarTarea() {
       return useCase.execute(id)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: TAREAS_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: TAREAS_BASE_KEY })
     },
   })
 }
